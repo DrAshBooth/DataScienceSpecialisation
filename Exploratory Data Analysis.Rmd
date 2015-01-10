@@ -1,0 +1,133 @@
+---
+title: "Exploratory Data Analysis"
+output: html_document
+---
+
+This document contains information and code from the coursera "Exploratory Data Analysis Course"
+
+# Week 1
+The first week focusses on R's base plotting system.
+
+## Classes
+Below we see how to create an empty scatter plot so as to add subsets one by one with differing colours.
+```{r}
+library(datasets)
+with(airquality, plot(Wind,Ozone,main="Ozone and Wind in NYC", type="n"))
+with(subset(airquality, Month==5), points(Wind,Ozone,col="blue"))
+with(subset(airquality, Month!=5), points(Wind,Ozone,col="red"))
+legend("topright",pch=1,col=c("blue", "red"), legend = c("May", "Other Months"))
+```
+
+From here, adding a regression line is simple:
+```{r}
+with(airquality, plot(Wind,Ozone,main="Ozone and Wind in NYC", pch=20))
+model <- lm(Ozone ~ Wind, airquality)
+abline(model,lwd=2)
+```
+
+Often we want multiple plots on  asingle device, this is achieved using the ```par()``` command:
+```{r}
+par(mfrow = c(1,2))
+with(airquality, {
+  plot(Wind, Ozone, main = "Ozone and Wind")
+  plot(Solar.R, Ozone, main = "Ozone and Solar Radiation")
+})
+```
+
+This is highly customisable:
+```{r}
+par(mfrow = c(1,3), mar = c(4,4,2,1), oma = c(0,0,2,0))
+with(airquality, {
+  plot(Wind, Ozone, main = "Ozone and Wind")
+  plot(Solar.R, Ozone, main = "Ozone and Solar Radiation")
+  plot(Temp,Ozone, main = "Ozone and Temperature")
+  mtext("Ozone and Weather in NYC", outer =T)
+})
+```
+
+There are actually two approaches to creating a plot. The first, we have been using already and involves calling a function like ```plot(), xyplot() or qplot()```. This automatically sends the plot to the screen after which we annotate it if necessary.
+
+The second method explicitly launches a graphics device. The device MUST then be explicitly closed after annotation:
+```
+pdf(file="myplot.pdf") # Open PDF device and create file
+with(faithful, plot(eruptions, waiting)) # Create plot (sent to file)
+title(main="Old Faithful Geyser data") # Annotate plot
+dev.off() # Close the pdf file device
+```
+
+If you are editing a plot using the screen device and you lie the look of it, you can use the ```dev.copy()``` function to copy it to a file device. Don't forget to close the file device though!
+```
+with(faithful, plot(eruptions,waiting)) # Create plot on screen device
+title(main = "Old Faithful Geyser data") # Add a main title
+dev.copy(png, file="geyserplot.png") # coply plot to PNG file
+dev.off()
+})
+```
+
+## Course Project 1
+This assignment uses data from the [UC Irvine Machine Learning Repository](http://archive.ics.uci.edu/ml/), a popular repository for machine learning datasets. In particular, we will be using the “Individual household electric power consumption Data Set” which I have made available on the course web site:
+
+Dataset: [Electric power consumption](https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip)
+
+Description: Measurements of electric power consumption in one household with a one-minute sampling rate over a period of almost 4 years. Different electrical quantities and some sub-metering values are available.
+
+The following descriptions of the 9 variables in the dataset are taken from the [UCI web site](https://archive.ics.uci.edu/ml/datasets/Individual+household+electric+power+consumption):
+
+1. **Date**: Date in format dd/mm/yyyy
+2. **Time**: time in format hh:mm:ss
+3. **Global_active_power**: household global minute-averaged active power (in kilowatt)
+4. **Global_reactive_power**: household global minute-averaged reactive power (in kilowatt)
+5. **Voltage**: minute-averaged voltage (in volt)
+6. **Global_intensity**: household global minute-averaged current intensity (in ampere)
+7. **Sub_metering_1**: energy sub-metering No. 1 (in watt-hour of active energy). It corresponds to the kitchen, containing mainly a dishwasher, an oven and a microwave (hot plates are not electric but gas powered).
+8. **Sub_metering_2**: energy sub-metering No. 2 (in watt-hour of active energy). It corresponds to the laundry room, containing a washing-machine, a tumble-drier, a refrigerator and a light.
+9. **Sub_metering_3**: energy sub-metering No. 3 (in watt-hour of active energy). It corresponds to an electric water-heater and an air-conditioner.
+
+### Loading the Data
+Read raw data into R:
+```{r}
+data <- read.table("household_power_consumption.txt", header=T, sep=";", quote="",na.strings = "?", nrows=2075260)
+```
+
+Convert date  and time collumns from charater strings to the Date/Time class:
+```{r}
+data$DateTime <- as.POSIXct(paste(data$Date,data$Time), format="%d/%m/%Y %H:%M:%S")
+```
+
+Subset the date for the period that we're interested in:
+```{r}
+data <- subset(data, DateTime >= as.POSIXct("2007-02-01 00:00:00") & DateTime < as.POSIXct("2007-02-03 00:00:00"))
+```
+
+Create the first Plot:
+```{r}
+with(data, hist(Global_active_power, main="Global Active Power", xlab="Global Active Power (kilowatts)", col="red"))
+```
+
+...and the second
+```{r}
+with(data, plot(Global_active_power ~ DateTime, main="", xlab="", ylab="Global Active Power (kilowatts)", type="l"))
+```
+
+...and the third
+```{r}
+with(data, plot(Sub_metering_1 ~ DateTime, main="", xlab="", ylab="Energy sub metering",type="n"))
+with(data, lines(Sub_metering_1 ~ DateTime, col="black"))
+with(data, lines(Sub_metering_2 ~ DateTime, col="red"))
+with(data, lines(Sub_metering_3 ~ DateTime, col="blue"))
+legend("topright",lwd=1,col=c("black", "red", "blue"), legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
+```
+
+...and the final plot
+```{r}
+par(mfrow = c(2,2))
+with(data, plot(Global_active_power ~ DateTime, main="", xlab="", ylab="Global Active Power", type="l"))
+with(data, plot(Voltage ~ DateTime, main="", ylab="Voltage", xlab="datetime", type="l"))
+with(data, plot(Sub_metering_1 ~ DateTime, main="", xlab="", ylab="Energy sub metering", type="n"))
+with(data, lines(Sub_metering_1 ~ DateTime, col="black"))
+with(data, lines(Sub_metering_2 ~ DateTime, col="red"))
+with(data, lines(Sub_metering_3 ~ DateTime, col="blue"))
+legend("topright",lwd=1,col=c("black", "red", "blue"), legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"), bty="n")
+with(data, plot(Global_reactive_power ~ DateTime, main="", xlab="datetime", type="l"))
+```
+
