@@ -1,0 +1,314 @@
+---
+title: "R Programming"
+output: html_document
+---
+
+This document contains information and code from the Coursera "R Programming" course.
+
+# Week 1
+The first week focuses on getting started and R's nuts and bolts, including: data types reading data, connections, subsetting and vectorised operations.
+
+## Classes
+Notes from the class videos
+
+### Creating vectors
+```{r}
+x <- c(1,1,1)
+y <- vector("numeric", length=3)
+x
+y
+```
+
+### Explicit Coercion
+```{r}
+x <- 0:5
+class(x)
+as.numeric(x)
+as.logical(x)
+as.character(x)
+```
+
+In some cases coercion does not make sense:
+```{r}
+x <- c("a","b","c")
+as.numeric(x)
+as.logical(x)
+```
+
+### Lists
+Lists are a special type of vector that can contain elements of different classes.
+```{r}
+x <- list(1,"a",TRUE,1+4i)
+x
+```
+
+### Matrices
+Matrices are vectors with a dimension attribute. The dimension attribute is itself and integer vector of length 2 (nrow,ncol).
+```{r}
+m <- matrix(nrow=2,ncol=3)
+m
+dim(m)
+```
+
+Matrices are constructed column-wise, e.g.:
+```{r}
+m <- matrix(1:6, nrow=2,ncol=3)
+m
+```
+
+Matrices may even be created directly from a vector by adding a dimension attribute, e.g.:
+```{r}
+m <- 1:10
+m
+dim(m) <- c(2,5)
+m
+```
+
+# cbind-ing and rbind-ing
+Matrices can be created by column-binding or row-binding with ```cbind()``` and ```rbind()```:
+```{r}
+x <-1:3
+y <- 10:12
+cbind(x,y)
+rbind(x,y)
+```
+
+### Factors
+Factors are used to represent categorical data. They can be unordered or ordered. You can think of a factor as an integer vector where each integer has a label.
+
+* Factors are treated specially by modelling functions like ```lm()``` and ```gm()```.
+* Using factors with labels is better than using integers because factors are self-describing; having a variable that has values "Male" and "Female" is better than a variable that has values 1 and 2.
+
+```{r}
+x <- factor(c("yes", "yes", "no", "yes", "no"))
+x
+table(x)
+unclass(x)
+```
+
+The order of the levels can be set using the ```levels``` argument to ```factor()```. This can be important in linear modelling because the first level is used as the baseline level.
+
+```{r}
+x <- factor(c("yes", "yes", "no", "yes", "no"),
+            levels=c("yes","no"))
+x
+```
+
+### Missing values
+
+Missing values are denoted by either NA or NaN for undefined mathematical operations.
+
+You can check for NA using ```is.na()```:
+
+```{r}
+x <- c(1, 2, NA, 4, 5)
+is.na(x)
+```
+
+### Data Frames
+
+Data frames are used to store tabular data
+
+* They are represented as a special type of list where every element of the list has to have the same length
+* Each element of the list can be thought of as a column and the length of each element of the list is the number of rows.
+* Unlike matrices, data frames can store different classes of objects in each column (just like lists).
+* Data frames also have a special attribute called row.names
+* Data frames are usually created by calling ```read.table()``` or ```read.csv()```.
+* Can be converted to a matrix by calling ```data.matrix()```.
+
+Besides the above, we can also use the ```data.frame()``` function to create them:
+```{r}
+x <- data.frame(foo = 1:4, bar = c(T,T,F,F))
+x
+nrow(x)
+```
+
+### Names
+All R objects (not just data frames) can have names. This is very useful for writing readable code and self-describing objects.
+
+```{r}
+x <- 1:3
+names(x) <- c("foo", "bar", "norf")
+x
+names(x)
+```
+
+List can also be named:
+```{r}
+x <- list(a=1,b=2,c=3)
+x
+```
+
+as can matrices...
+```{r}
+m <- matrix(1:4,nrow=2,ncol=2)
+dimnames(m) <- list(c("a","b"),c("d","e"))
+m
+```
+
+### Reading large tables
+
+With relatively large data sets, there are a few "tricks" that can make your life easier and prevent R from chocking when reading data:
+
+* Make a rough calculation of the memory required to store your data set. If the data set is larger than the amount of RAM on your computer then you can probably stop there.
+* Set ```comment.char=""``` if there are no commented lines in your file.
+* Use the ```colClasses``` argument. Specifying this option instead of using the default can make ```read.table()``` run MUCH faster, often twice as fast. In order 
+* Set ```nrows```. This doesn't make R run faster but it helps with memory usage. A mild overestimate is okay. You can use the Unix tool ```wc``` to calculate the number of lines in a file.
+
+### Textual formats
+
+* **Dumping** and **dputing** are useful because the resulting textual format is edit-able, and in the case of corruption, potentially recoverable.
+* Unlike writing out a table or csv file, ```dump``` and ```dput``` preserve the metadata (sacrificing some readability) so that another user doesn't have to specify it all over again.
+* Textual formats can work much better with version control programs.
+* They can be longer lived; if there is corruption somewhere in the file, it can be easier to fix the problem.
+* Textual formats adhere to the "Unix philosophy".
+* Downside: The format is not very space=efficient.
+
+You can deparse an R object with ```dput``` and read it back in with ```dget```:
+```
+y <- data.frame(a=1,b="a")
+dput(y, "file.R")
+new.y <- dget("y.R")
+```
+
+Multiple r objects can be deparsed using the dump function and read back in using source.
+```
+x <- "foo"
+y <- data.frame(a=1,b="a")
+dump(c("x","y"), "file.R")
+rm(x,y)
+source("file.R")
+```
+
+### Connections: Interfaces to the outside world
+Data are read in using connection interfaces. Connections can be made to files or to other more exotic things.
+
+* ```file```, opens a connection to a file.
+* ```gzfile```, opens a connection to a file compressed with gzip.
+* ```bzfile```, opens a connections to a file compressed with bzip2.
+* ```url```, opens a connection to a webpage.
+
+In general, connections are powerful tools that let you navigate files or other external objects. In conjunction with the readlines function, connections may be used to read webpages:
+
+```{r}
+con <- url("http://www.jhsph.edu", "r")
+x <- readLines(con)
+head(x)
+```
+
+### Subsetting: Basics
+
+There are a number of operators that can be used to extract subsets of R objects:
+
+* ```[``` always returns an object of the same class as the original; can be used to select more than one element.
+* ```[[``` is used to extract elements of a list or data frame; it can only be used to extract a single element and the class of the returned object will not necessarily be a list or data frame.
+* ```$``` is used to extract elements of a list or data frame by name; semantics are similar to that of ```[[```.
+
+### Subsetting: Vectors
+
+```{r}
+x <- c("a", "b", "c", "d", "a")
+x[1]
+x[1:3]
+x[x>"a"]
+```
+
+### Subsetting: Lists
+
+Lists may be subsetted by any of the three methods discussed about but each will provide a different result. 
+
+```{r}
+x <- list(foo=1:4, bar=0.6)
+x[1]
+x[[1]]
+x$bar
+x[["bar"]]
+x["bar"]
+```
+
+To extract multiple elements from a list, you must use the single bracket operator:
+
+```{r}
+x <- list(foo=1:4, bar=0.6, baz = "hello")
+x[c(1,3)]
+```
+
+The nice thing about the double bracket operator is that it can be used with computed indices; ```$``` can only be used with literal names:
+
+```{r}
+x <- list(foo=1:4, bar=0.6, baz = "hello")
+name <- "foo"
+x[[name]]
+x$name
+```
+
+### Subsetting: Nested elements of a list
+
+```{r}
+x <- list(a=list(10,12,14), b=c(3.14,2.81))
+x[[c(1,3)]]
+x[[1]][[3]]
+```
+
+### Subsetting: Matrices
+
+Matrices may be subsetted in the usual way with (i,j) type indices, as well ass missing indices:
+
+```{r}
+x <- matrix(1:6,2,3)
+x[1,2]
+x[1,]
+x[,2]
+```
+
+By default, when a single element of a matrix is retrieved, it is returned as a vector of length 1 rather than a 1 x 1 matrix. This behaviour can be turned off by setting ```drop=FALSE```.
+
+### Subsetting: Removing missing values
+
+A common task is the removal of missing values.
+
+```{r}
+x <- c(1,2,NA,4,NA,6)
+bad <- is.na(x)
+x[!bad]
+```
+
+If there are multiple things from which you want to create a subset with no missing values, then ```complete.cases()``` is your man:
+
+```{r}
+x <- c(1,2,NA,4,NA,6)
+y <- c("a","b",NA,NA,"e","f")
+good<-complete.cases(x,y)
+x[good]
+y[good]
+```
+
+Complete cases can also be used to remove missing values from data frames in the same manner.
+
+### Vectorised operations
+
+Many operations in R are vectorized making code more efficient, concise and easier to read.
+
+```{r}
+x <- 1:4; y <- 6:9
+x+y
+x>2
+```
+
+### Vectorised matrix operations
+
+Element wise multiplication:
+```{r}
+x <- matrix(1:4,2,2); y <- matrix(rep(10,4),2,2)
+x*y
+```
+
+True matrix multiplication:
+Element wise multiplication:
+```{r}
+x <- matrix(1:4,2,2); y <- matrix(rep(10,4),2,2)
+x%*%y
+```
+
+
+
