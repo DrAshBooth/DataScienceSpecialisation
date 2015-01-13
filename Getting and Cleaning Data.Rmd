@@ -1,0 +1,117 @@
+---
+title: "Getting and Cleaning Data"
+output: html_document
+---
+
+This document contains information and code from the coursera "Getting and Cleaning" course
+
+# Week 2
+The second week focusses on reading data from databases, the web and APIs.
+
+## Classes
+
+### MYSQL
+MySQL is a free and open source databse software that is widely used in internet based applications. Within it, data are structured in:
+
+* Databases
+* Tables
+* Fields withing tables
+
+Each row is called a record.
+
+### Connecting to and listing MySQL databases from R
+```{r}
+library(RMySQL)
+ucscDb <- dbConnect(MySQL(), user="genome",
+                    host="genome-mysql.cse.ucsc.edu")
+result <-dbGetQuery(ucscDb,"show databases;"); dbDisconnect(ucscDb);
+result
+```
+
+### Connecting to a database and listing the tables
+```{r}
+# library(RMySQL)
+hg19 <- dbConnect(MySQL(), user="genome", db="hg19",
+                    host="genome-mysql.cse.ucsc.edu")
+allTables <- dbListTables(hg19)
+length(allTables)
+allTables[1:5]
+```
+
+### Getting the dimensions of a specific table
+```{r}
+dbListFields(hg19,"affyU133Plus2")
+dbGetQuery(hg19,"select count(*) from affyU133Plus2")
+```
+
+### Reading from a table
+```{r}
+affyData <- dbReadTable(hg19,"affyU133Plus2")
+```
+
+### Selecting a subset
+Often and entire table will be far to large to read into memory and we will have to select subsets using SQL.
+```{r}
+query <-dbSendQuery(hg19, "select * from affyU133Plus2 where misMatches between 1 and 3")
+affyMis <-fetch(query); quantile(affyMis$misMatches)
+```
+
+We can chose to only fetch the first n results:
+```{r}
+affyMisSmall <- fetch(query,n=10); dbClearResult(query);
+dbDisconnect(hg19)
+```
+
+### Reading data from HDF5
+HDF5 is used for storing large datasets and supports storing a nrange of data types, HDF stands for heirarcical data format and is named so as the data is stored in groups containing zero or more data sets along with their metadata. Groups contain:
+
+* A Group header - with the group name and list of attributes.
+* A group symbol table with a list of objects in the group.
+
+Each dataset is a multimensional array of elements with their metadata including:
+
+* A header - with a name, datatype, dataspace and storage layout.
+* A data array - with the data.
+
+### Installing the R hdf5 package
+This is done through bioconductor as follows:
+```
+source("http://bioconductor.org/biocLite.R")
+biocLite("rfdf5")
+library(rhdf5)
+created = h5createFile("example.h5")
+created
+```
+
+### Creating groups
+```
+created = h5createGroup("example.h5", "foo")
+created = h5createGroup("example.h5", "foo")
+h5ls("example.h5"
+```
+
+### Writing to groups
+```
+A = matrix(1:10,nrow=5,ncol=2)
+h5write(A,"example.h5", "foo/A")
+```
+
+### Writing a dataset
+```
+df = data.frame(1L:5L,seq(0,1,length.out=5),
+                c("ab", "cde", "fghi", "a", "s"), stringsAsFactors=FALSE)
+h5write(df, "example.h5", "df")
+h5ls("example.h5")
+```
+
+### Reading data
+```
+readA = h5read("example.h5", "foo/A")
+readdf = h5read("examlple.h5","df")
+readA
+```
+
+
+
+
+
