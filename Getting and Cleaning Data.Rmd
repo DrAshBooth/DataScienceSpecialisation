@@ -111,7 +111,68 @@ readdf = h5read("examlple.h5","df")
 readA
 ```
 
+### Web scraping
+Web scraping involves programmatically extracting data from the html code of websites
 
+### readlines()
+```{r}
+con = url("http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en")
+htmlCode = readLines(con)
+close(con)
+htmlCode
+```
 
+### Parsing with XML
+```{r}
+library(XML)
+url<-"http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en"
+html<-htmlTreeParse
+xpathSApply(html,"//title", xmlValue)
+xPathSApply(html,"//td[@id='col-citedby']")
+```
 
+### GET() from the httr package
+```{r}
+library(httr); html2 = GET(url)
+content2 = content(html2,as="text")
+parsedHtml = htmlParse(content2, asText=TRUE)
+xpathSApply(parsedHtml, "//title", xmlValue)
+```
+
+### Accessing websites with passwords
+```{r}
+pg2 = GET("http://httpbin.org/basic-auth/user/passwd",
+          authenticate("user", "passwd"))
+pg2
+names(pg2)
+```
+
+### Using handles
+Using handles allows you to save the authentication across multiple requests
+```{r}
+google = handle("http://google.com")
+pg1 = GET(handle=google,path="/")
+pg2 = GET(handle=google,path="search")
+```
+
+### APIs
+Appliction programming interfaces are a great way to interact with software and the web. Often you will need to create a developer account to access them (this is the case with Twitter). 
+
+### Accessing Twitter from R
+```{r}
+myapp = oauth_app("twitter",
+                  key="yourConsumerKeyHere",
+                  secret="yourConsumerSecretHere")
+sig = sign_oauth1.0(myapp,
+                    token = "yourTokenHere",
+                    token_secret = "yourTokenSecretHere")
+homeTL = GET("https://api.twitter.com/1.1/statuses/home_timeline.json", sig)
+```
+
+### Converting the json object
+```{r}
+json = content(homeTL)
+json2 = jsonlite::fromJSON(toJSON(json1))
+json2[1,1:4]
+```
 
