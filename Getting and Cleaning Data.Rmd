@@ -20,7 +20,7 @@ MySQL is a free and open source databse software that is widely used in internet
 Each row is called a record.
 
 ### Connecting to and listing MySQL databases from R
-```{r}
+```
 library(RMySQL)
 ucscDb <- dbConnect(MySQL(), user="genome",
                     host="genome-mysql.cse.ucsc.edu")
@@ -30,7 +30,7 @@ result
 
 ### Connecting to a database and listing the tables
 ```{r}
-# library(RMySQL)
+library(RMySQL)
 hg19 <- dbConnect(MySQL(), user="genome", db="hg19",
                     host="genome-mysql.cse.ucsc.edu")
 allTables <- dbListTables(hg19)
@@ -45,13 +45,13 @@ dbGetQuery(hg19,"select count(*) from affyU133Plus2")
 ```
 
 ### Reading from a table
-```{r}
+```{r warning=FALSE}
 affyData <- dbReadTable(hg19,"affyU133Plus2")
 ```
 
 ### Selecting a subset
 Often and entire table will be far to large to read into memory and we will have to select subsets using SQL.
-```{r}
+```{r warning=FALSE}
 query <-dbSendQuery(hg19, "select * from affyU133Plus2 where misMatches between 1 and 3")
 affyMis <-fetch(query); quantile(affyMis$misMatches)
 ```
@@ -110,6 +110,179 @@ readA = h5read("example.h5", "foo/A")
 readdf = h5read("examlple.h5","df")
 readA
 ```
+
+### Web scraping
+Web scraping involves programmatically extracting data from the html code of websites
+
+### readlines()
+```{r}
+con = url("http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en")
+htmlCode = readLines(con)
+close(con)
+```
+
+### Parsing with XML
+```{r}
+library(XML)
+url<-"http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en"
+html<-htmlTreeParse(url, useInternalNodes = T)
+xpathSApply(html,"//title", xmlValue)
+xpathSApply(html,"//td[@id='col-citedby']")
+```
+
+### GET() from the httr package
+```{r}
+library(httr); html2 = GET(url)
+content2 = content(html2,as="text")
+parsedHtml = htmlParse(content2, asText=TRUE)
+xpathSApply(parsedHtml, "//title", xmlValue)
+```
+
+### Accessing websites with passwords
+```{r}
+pg2 = GET("http://httpbin.org/basic-auth/user/passwd",
+          authenticate("user", "passwd"))
+pg2
+names(pg2)
+```
+
+### Using handles
+Using handles allows you to save the authentication across multiple requests
+```{r}
+google = handle("http://google.com")
+pg1 = GET(handle=google,path="/")
+pg2 = GET(handle=google,path="search")
+```
+
+### APIs
+Appliction programming interfaces are a great way to interact with software and the web. Often you will need to create a developer account to access them (this is the case with Twitter). 
+
+### Accessing Twitter from R
+```
+myapp = oauth_app("twitter",
+                  key="yourConsumerKeyHere",
+                  secret="yourConsumerSecretHere")
+sig = sign_oauth1.0(myapp,
+                    token = "yourTokenHere",
+                    token_secret = "yourTokenSecretHere")
+homeTL = GET("https://api.twitter.com/1.1/statuses/home_timeline.json", sig)
+```
+
+### Converting the json object
+```
+json = content(homeTL)
+json2 = jsonlite::fromJSON(toJSON(json1))
+json2[1,1:4]
+```
+
+
+### Reading data from other programs
+The foreign package is very usefull for this. Tends to revolve around the ```read.foo()``` syntax, as in:
+
+* read.arff (Weka)
+* read.dta (Stata)
+* read.mtp (Minitab)
+* read.octave (Octave)
+* read.spss (SPSS)
+* read.xport (SAS)
+
+### Other Database types
+There are R packages for a variety of databases including:
+
+* RPostresSQL
+* RODBC
+* RMongo
+
+### Reading images
+You can also read in a number of image formats, including:
+
+* jpeg
+* readbitmap
+* png
+
+### Reading GIS data
+There are many packages available for reading GIS data:
+
+* rdgal
+* rgeos
+* raster
+
+### Reading music data
+You can also read directly from mp3 files using:
+
+* tuneR
+* seeWave
+
+## Quiz - W2
+
+### Question 1
+We'll need the httr package for this
+```
+library(httr)
+```
+
+First, register an application at https://github.com/settings/applications; use any URL you would like for the homepage URL and http://localhost:1410 as the callback url. Insert your client ID and secret below - if secret is omitted, it will look it up in the ```GITHUB_CONSUMER_SECRET``` environmental variable.
+```
+myapp <- oauth_app("github", 
+                   key="0638a2137e9e0592fa94",
+                   secret = "81adc9c11643b6c98b9eae82ad69d768e07b8e5d")
+```
+
+Next, we get the OAuth credentials:
+```
+github_token <- oauth2.0_token(oauth_endpoints("github"), myapp)
+```
+
+We can now use the API to grab the data from Jeff's github
+```
+gtoken <- config(token = github_token)
+req <- GET("https://api.github.com/users/jtleek/repos", gtoken)
+stop_for_status(req)
+content(req)
+```
+
+### Question 2
+The sqldf package allows for execution of SQL commands on R data frames. We will use the sqldf package to practice the queries we might send with the dbSendQuery command in RMySQL. Download the American Community Survey data and load it into an R object:
+```
+fileUrl <- "http://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06pid.csv"
+download.file(fileUrl,destfile = "./data/acs.csv", method="curl")
+acs <- read.csv("./data/acs.csv")
+```
+
+To select only the data for the probability weights pwgtp1 with ages less than 50, we can use the SQL query:
+```
+sqldf("select pwgtp1 from acs where AGEP < 50")
+```
+
+### Question 3
+Using the same data frame from the previous problem, the equivalent function to unique(acs$AGEP) is:
+```
+sqldf("select distinct AGEP from acs")
+```
+
+### Question 4
+How many characters are in the 10th, 20th, 30th and 100th lines of HTML from this page "http://biostat.jhsph.edu/~jleek/contact.html"?
+```{r}
+con = url("http://biostat.jhsph.edu/~jleek/contact.html")
+htmlCode = readLines(con)
+close(con)
+nchar(htmlCode[c(10,20,30,100)])
+```
+
+### Question 4
+Read this data set into R and report the sum of the numbers in the fourth of the nine columns. 
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fwksst8110.for 
+```{r}
+fileUrl <- "http://d396qusza40orc.cloudfront.net/getdata%2Fwksst8110.for"
+sst <- read.fwf(file=url(fileUrl),
+                skip=4,
+                widths=c(-1,9,-5,4,4,-5,4,4,-5,4,4,-5,4,4))
+sum(sst[,4])
+```
+
+
+
 
 
 
