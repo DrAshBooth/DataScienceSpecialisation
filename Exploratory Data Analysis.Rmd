@@ -149,5 +149,282 @@ with(data, plot(Global_reactive_power ~ DateTime, main="", xlab="datetime", type
 ```
 
 # Week 2
+The second week centres on lattice plot and ggplot2.
+
+## Classes
+Below are my notes form the video lectures
+
+### The Lattice Plotting System
+The lattice plotting system is implemented using the following packages:
+
+* lattice: contains code for producing Trellis graphics, which are independent of the “base” graphics system; includes functions like xyplot, bwplot, levelplot
+* grid: implements a different graphing system independent of the "base" system; the lattice package builds on top of grid
+  + We seldom call functions from the grid package directly
+* The lattice plotting system does not have a "two-phase" aspect with separate plotting and annotation like in base plotting
+* All plotting/annotation is done at once with a single function call
+
+### Lattice Functions
+* xyplot: this is the main function for creating scatterplots
+* bwplot: box-and-whiskers plots (“boxplots”)
+* histogram: histograms
+* stripplot: like a boxplot but with actual points
+* dotplot: plot dots on "violin strings"
+* splom: scatterplot matrix; like pairs in base plotting system
+* levelplot, contourplot: for plotting "image" data
+
+Lattice functions generally take a formula for their first argument, usually of the form
+```
+xyplot(y ~ x | f * g, data)
+```
+
+* We use the formula notation here, hence the ```~```.
+* On the left of the ```~``` is the y-axis variable, on the right is the x-axis variable
+* ```f``` and ```g``` are conditioning variables — they are optional
+* the ``` *``` indicates an interaction between two variables
+  + The second argument is the data frame or list from which the variables in the formula should be looked up
+  +  If no data frame or list is passed, then the parent frame is used.
+*If no other arguments are passed, there are defaults that can be used.
+
+### Simple Lattice Plot
+```{r}
+library(lattice)
+library(datasets)
+## Simple scatterplot
+xyplot(Ozone ~ Wind, data = airquality)
+```
+
+And another:
+
+```{r}
+## Convert 'Month' to a factor variable
+airquality <- transform(airquality, Month = factor(Month))
+xyplot(Ozone ~ Wind | Month, data = airquality, layout = c(5, 1))
+```
+
+### Lattice Behavior
+Lattice functions behave differently from base graphics functions in one critical way.
+
+* Base graphics functions plot data directly to the graphics device (screen, PDF file, etc.)
+* Lattice graphics functions return an object of class trellis
+* The print methods for lattice functions actually do the work of plotting the data on the graphics device.
+* Lattice functions return "plot objects" that can, in principle, be stored (but it’s usually better to just save the code + data).
+* On the command line, trellis objects are auto-printed so that it appears the function is plotting the data
+
+```{r}
+p <- xyplot(Ozone ~ Wind, data = airquality)  ## Nothing happens!
+print(p)  ## Plot appears
+```
+```
+xyplot(Ozone ~ Wind, data = airquality)  ## Auto-printing
+```
+
+### Lattice Panel Functions
+* Lattice functions have a panel function which controls what happens inside each panel of the plot.
+* The lattice package comes with default panel functions, but you can supply your own if you want to customize what happens in each panel
+* Panel functions receive the x/y coordinates of the data points in their panel (along with any optional arguments)
+```{r}
+set.seed(10)
+x <- rnorm(100)
+f <- rep(0:1, each = 50)
+y <- x + f - f * x + rnorm(100, sd = 0.5)
+f <- factor(f, labels = c("Group 1", "Group 2"))
+xyplot(y ~ x | f, layout = c(2, 1))  ## Plot with 2 panels
+## Custom panel function
+xyplot(y ~ x | f, panel = function(x, y, ...) {
+    panel.xyplot(x, y, ...)  ## First call the default panel function for 'xyplot'
+    panel.abline(h = median(y), lty = 2)  ## Add a horizontal line at the median
+})
+```
+
+### Lattice Panel Functions: Regression Line
+```{r}
+xyplot(y ~ x | f, panel = function(x, y, ...) {
+    panel.xyplot(x, y, ...)  ## First call default panel function
+    panel.lmline(x, y, col = 2)  ## Overlay a simple linear regression line
+})
+```
+
+### Many Panel Lattice Plot: Example from MAACS
+
+* Study: Mouse Allergen and Asthma Cohort Study (MAACS)
+* Study subjects: Children with asthma living in Baltimore City, many allergic to mouse allergen
+* Design: Observational study, baseline home visit + every 3 months for a year.
+* Question: How does indoor airborne mouse allergen vary over time and across subjects?
+
+Ahluwalia et al., Journal of Allergy and Clinical Immunology, 2013
+
+![alt text](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/PlottingLattice/figure/unnamed-chunk-8.png "Logo Title Text 1")
+
+### Summary
+
+* Lattice plots are constructed with a single function call to a core lattice function (e.g. xyplot)
+* Aspects like margins and spacing are automatically handled and defaults are usually sufficient
+* The lattice system is ideal for creating conditioning plots where you examine the same kind of plot under many different conditions
+* Panel functions can be specified/customized to modify what is plotted in each of the plot panels
+
+### What  is	ggplot2?	
+* An	implementa:on	of	the	Grammar	of	Graphics by	Leland	Wilkinson	
+* Written	by	Hadley	Wickham	(while	he	was	a	graduate	student	at	Iowa	State)	
+* A	"third"	graphics	system	for	R	(along	with	base and	lattice)	
+* Available	from	CRAN	via	install.packages()
+* Web	site:	http://ggplot2.org	(better	documenta:on)	
+* Grammar  of	graphics	represents	and	abstraction	of	graphics	ideas/objects	
+* Think	"verb",	"noun",	"adjectiv"	for	graphics	
+* Allows	for	a	"theory"	of	graphics	on	which	to build	new	graphics	and	graphics	objects	
+* "Shorten	the	distance	from	mind	to	page"
+
+### Grammar  of	Graphics	
+> "In	brief,	the	grammar	tells	us	that	a	statistical	graphic	is	a	mapping	from	data	to	aesthetic attributes	(colour,	shape,	size)	of	geometric objects	(points,	lines,	bars).	The	plot	may	also contain	statisyical	transformayions	of	the	data	and	is	drawn	on	a	specific	coordinate	system"
+
+### The  Basics:	qplot()
+* Works	much	like	the	plot	function	in	base	graphics	system	
+* Looks	for	data	in	a	data	frame,	similar	to lattice,	or	in	the	parent	environment	
+* Plots	are	made	up	of	aesthe4cs	(size,	shape,	color)	and	geoms	(points,	lines)
+* Factors  are	important	for	indicating	subsets	of	the	data	(if	they	are	to	have	different	properties);	they	should	be	labeled	
+* The	qplot()	hides	what	goes	on	underneath,	 which	is	okay	for	most	operations	
+* ggplot()	is	the	core	function	and	very	flexible	for	doing	things	qplot()	cannot	do.
+```{r}
+library("ggplot2")
+qplot(displ, hwy, data=mpg, color=drv)
+```
+
+Adding a geom:
+```{r}
+qplot(displ, hwy, data=mpg, geom=c("point","smooth"))
+qplot(displ, hwy, data=mpg, geom=c("point","smooth"), method="lm")
+```
+
+Histograms:
+```{r}
+qplot(hwy, data=mpg, fill=drv)
+```
+
+Facets:
+```{r}
+qplot(displ, hwy,	data =	mpg, geom = c("point", "smooth"),	method = "lm", facets	=	.~drv)
+qplot(hwy, data	=	mpg,	facets	=	drv~	.,	binwidth	=	2)	
+```
+
+Density Smooth:
+```{r}
+qplot(hwy,  data	=	mpg,	geom	=	"density")
+qplot(hwy,  data	=	mpg,	geom	=	"density",	color	=	drv)	
+```
+
+### Summary  of	qplot()	
+* The	qplot()	function	is	the	analog	to	plot()	but	with	many	built-in	features	
+* Syntax	somewhere	in	between	base/lattice	
+* Produces	very	nice	graphics,	essentially	publication	ready	(if	you	like	the design)	
+* Difficult	to	go	against	the	grain/customize	(don’t bother;	use	full ggplot2	power	in	that	case).
+
+### Resources  
+* The	ggplot2	book	by	Hadley	Wickham	
+* The	R	Graphics	Cookbook	by	Winston	Chang	(examples	in	base	plots	and	in	ggplot2)
+* ggplot2	web	site	(http://ggplot2.org)	
+* ggplot2	mailing	list	(http://goo.gl/OdW3uB),	primarily	for	developers
+
+### What  is	ggplot2?	
+* An	implementation	of	the	Grammar	of	Graphics by	Leland	Wilkinson	
+* Grammar	of	graphics	represents	and	abstraction	of	graphics	ideas/objects	
+* Think	"verb",	"noun",	"adjective"	for	graphics	
+* Allows	for	a	"theory"	of	graphics	on	which	to	build	new	graphics	and	graphics	objects.
+
+### Basic  Components	of	a	ggplot2	Plot	
+* A	data	frame	
+* aesthetic mappings:	how	data	are	mapped	to	color,	size		
+* geoms:	geometric	objects	like	points,	lines,	shapes.		
+* facets:	for	condional	plots.		
+* stats:	statistical	transformations	like	binning,	quantiles, smoothing.		
+* scales:	what	scale	an	aesthetic	map	uses	(example:	male	=	red,	female	=	blue).		
+* coordinate	system
+
+### Building  Plots	with	ggplot2	
+* When	building	plots	in	ggplot2	(rather	than using	qplot)	the	"artist's	palette"	model	may	be	the	closest	analogy	
+* Plots	are	built	up	in	layers	
+  + Plot	the	data	
+  + Overlay	a	summary	
+  + Metadata	and	annotation	
+
+### Example:  BMI,	PM2.5,	Asthma	
+* Mouse	Allergen	and	Asthma	Cohort	Study	
+* Baltimore	children	(age	5-17)	
+* Persistent	asthma,	exacerbation	in	past	year	
+* Does	BMI	(normal	vs.	overweight)	modify	the	relationship	between	PM2.5	and	asthma	symptoms?	
+
+Basic plot could be achieved with ```qplot()```
+```
+qplot(logpm25, NocturnalSympt, data = maacs, facets = . ~ bmicat)
+```
+
+### ggplot() builds up in layers:
+```
+g <- ggplot(maacs, aes(logpm25, NocturnalSympt))
+summary(g)
+> data: logpm25, bmicat, NocturnalSympt [554x3]
+> mapping: x = logpm25, y = NocturnalSympt
+> faceting: facet_null() 
+```
+
+There is still no plot yet!
+```
+print(g)
+> Error: No layers in plot
+p <- g + geom_point()
+print(p)
+> works fine!
+```
+
+We can add a smoothing line
+```
+g + geom_point() + geom_smooth(method = "lm”)
+```
+
+and facets
+```
+g + geom_point() + facet_grid(. ~ bmicat) + geom_smooth(method = "lm")
+```
+
+### Annotation  
+* Labels:	xlab(),	ylab(),	labs(),	ggtitle()	
+* Each	of	the	"geom"	func:ons	has	options	to	modify		
+* For	things	that	only	make	sense	globally,	use	theme()		
+  + Example:	theme(legend.position	=	"none")		
+* Two	standard	appearance	themes	are	included	
+  + theme_gray():	The	default	theme	(gray	background)	
+  + theme_bw():	More	stark/plain	
+
+We can specify colours directly:
+```
+g + geom_point(color = "steelblue”, size = 4, alpha = 1/2)
+```
+
+Or use a factor data variable:
+```
+g + geom_point(aes(color = bmicat), size = 4, alpha = 1/2)
+```
+
+We use the ```labs()``` function for customising labels:
+```
+g + geom_point(aes(color = bmicat)) + labs(title = "MAACS Cohort") + labs(x = expression("log " * PM[2.5]), y = "Nocturnal Symptoms")
+```
+
+We can also customize the smoother:
+```
+g + geom_point(aes(color = bmicat), size = 2, alpha = 1/2) + geom_smooth(size = 4, linetype = 3, method = "lm", se = FALSE)
+```
+
+and change the theme:
+```
+g + geom_point(aes(color = bmicat)) + theme_bw(base_family = "Times")
+```
+
+When you set limits in ggplot2, it automatically removes the outliers:
+```
+g + geom_line() + ylim(-3, 3)
+```
+
+### Summary  
+* ggplot2	is	very	powerful	and	flexible	if	you	learn	the	"grammar"	and	the	various	elements	that	can	be	tuned/modified	
+* Many	more	types	of	plots	can	be	made;	explore	and	mess	around	with	the	package	(references	men:oned	in	Part	1	are	useful)	
 
 
