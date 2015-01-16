@@ -670,6 +670,205 @@ y-x
 * Times use the POSIXct and POSIXlt class
 * Character strings can be coerced to Date/Time classes using the strptime function or the ```as.Date```, ```as.POSIXlt```, or ```as.POSIXct```.
 
+## Quiz - wk2
+
+### Question 1
+Suppose I define the following function in R:
+```{r}
+cube <- function(x, n) {
+        x^3
+}
+```
+
+What is the result of running in R after defining this function?
+```{r}
+cube(3)
+```
+
+### Question 2
+The following code will produce a warning in R.
+```{r}
+x <- 1:10
+if(x > 5) {
+        x <- 0
+}
+```
+Why?
+
+### Question 3
+Consider the following function:
+```{r}
+f <- function(x) {
+        g <- function(y) {
+                y + z
+        }
+        z <- 4
+        x + g(x)
+}
+```
+
+If I then run the below in R, what value is returned?
+```{r}
+z <- 10
+f(3)
+```
+
+### Question 4
+Consider the following expression:
+```{r}
+x <- 5
+y <- if(x < 3) {
+        NA
+} else {
+        10
+}
+```
+What is the value of 'y' after evaluating this expression?
+```{r}
+y
+```
+
+### Question 5
+Consider the following R function
+```
+h <- function(x, y = NULL, d = 3L) {
+        z <- cbind(x, d)
+        if(!is.null(y))
+                z <- z + y
+        else
+                z <- z + f
+        g <- x + y / z
+        if(d == 3L)
+                return(g)
+        g <- g + 10
+        g
+}
+```
+Which symbol in the above function is a free variable?
+
+### Question 6
+What is an environment in R?
+
+* a special type of function
+* an R package that only contains data
+* a collection of symbol/value pairs
+* a list whose elements are all functions
+
+### Question 7
+The R language uses what type of scoping rule for resolving free variables?
+
+* lexical scoping
+* compilation scoping
+* dynamic scoping
+* global scoping
+
+### Question 8
+How are free variables in R functions resolved?
+
+* The values of free variables are searched for in the global environment
+* The values of free variables are searched for in the environment in which the function was called
+* The values of free variables are searched for in the working directory
+* The values of free variables are searched for in the environment in which the function was defined
+
+### Question 9
+What is one of the consequences of the scoping rules used in R?
+
+* All objects can be stored on the disk
+* R objects cannot be larger than 100 MB
+* All objects must be stored in memory
+* Functions cannot be nested
+
+## Assignment 1 - wk2 - Air Pollution
+For this first programming assignment you will write three functions that are meant to interact with dataset that accompanies this assignment. The dataset is contained in a zip file specdata.zip that can be downloaded here:
+
+https://d396qusza40orc.cloudfront.net/rprog%2Fdata%2Fspecdata.zip
+
+The zip file contains 332 comma-separated-value (CSV) files containing pollution monitoring data for fine particulate matter (PM) air pollution at 332 locations in the United States. Each file contains data from a single monitor and the ID number for each monitor is contained in the file name. For example, data for monitor 200 is contained in the file "200.csv". Each file contains three variables:
+
+* Date: the date of the observation in YYYY-MM-DD format (year-month-day)
+* sulfate: the level of sulfate PM in the air on that date (measured in micrograms per cubic meter)
+* nitrate: the level of nitrate PM in the air on that date (measured in micrograms per cubic meter)
+
+For this programming assignment you will need to unzip this file and create the directory 'specdata'. Once you have unzipped the zip file, do not make any modifications to the files in the 'specdata' directory. In each file you'll notice that there are many days where either sulfate or nitrate (or both) are missing (coded as NA). This is common with air pollution monitoring data in the United States.
+
+### Part 1
+Write a function named 'pollutantmean' that calculates the mean of a pollutant (sulfate or nitrate) across a specified list of monitors. The function 'pollutantmean' takes three arguments: 'directory', 'pollutant', and 'id'. Given a vector monitor ID numbers, 'pollutantmean' reads that monitors' particulate matter data from the directory specified in the 'directory' argument and returns the mean of the pollutant across all of the monitors, ignoring any missing values coded as NA.
+```{r}
+pollutantmean <- function(directory, pollutant, id = 1:332) {
+  
+  sumtotal <- 0
+  n <- 0
+  for( i in id) {
+    # read in data
+    fileName <- if(i<10) {
+      paste(0,0,i,".csv",sep="")
+    } else if(i<100) {
+      paste(0,i,".csv", sep="")
+    } else {
+      paste(i,".csv", sep="")
+    }
+    data <- read.csv(paste("./",directory,"/",fileName,sep=""))
+    sumtotal <- sumtotal + sum(data[[pollutant]], na.rm = T)
+    n <- n + length(data[[pollutant]][complete.cases(data[[pollutant]])])
+  }
+  sumtotal/n
+}
+```
+
+### Part 2
+Write a function that reads a directory full of files and reports the number of completely observed cases in each data file. The function should return a data frame where the first column is the name of the file and the second column is the number of complete cases.
+```{r}
+complete <- function(directory, id = 1:332) {
+  
+  ns <- numeric(length(id))
+  numObs <- numeric(length(id))
+  
+  counter <- 1
+  for(i in id) {
+   
+    # read in data
+    fileName <- if(i<10) {
+      paste(0,0,i,".csv",sep="")
+    } else if(i<100) {
+      paste(0,i,".csv", sep="")
+    } else {
+      paste(i,".csv", sep="")
+    }
+    data <- read.csv(paste("./",directory,"/",fileName,sep=""))
+    
+    ns[counter] <- i
+    numObs[counter] <- nrow(data[complete.cases(data),])
+    
+    counter <- counter + 1
+  }
+  x<-data.frame(ns,numObs)
+  colnames(x) <- c("id","nobs")
+  x
+}
+```
+
+### Part 3
+Write a function that takes a directory of data files and a threshold for complete cases and calculates the correlation between sulfate and nitrate for monitor locations where the number of completely observed cases (on all variables) is greater than the threshold. The function should return a vector of correlations for the monitors that meet the threshold requirement. If no monitors meet the threshold requirement, then the function should return a numeric vector of length 0.
+```{r}
+corr <- function(directory, threshold=0) {
+  
+  cors <- numeric()
+  
+  counter <- 1
+  for(i in list.files("specdata")) {
+    
+    data <- read.csv(paste("./",directory,"/",i,sep=""))
+    completeData <- data[complete.cases(data),]
+    
+    if(nrow(completeData) >= threshold) {
+      cors[counter] <- cor(completeData$sulfate,completeData$nitrate)
+      counter <- counter + 1
+    }
+  }
+  cors
+}
+
+```
 
 
 
