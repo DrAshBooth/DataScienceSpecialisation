@@ -261,7 +261,7 @@ x[1,]
 x[,2]
 ```
 
-By default, when a single element of a matrix is retrieved, it is returned as a vector of length 1 rather than a 1 x 1 matrix. This behaviour can be turned off by setting ```drop=FALSE```.
+By default, when a single element of a matrix is retrieved, it is returned as a vector of length 1 rather than a 1 x 1 matrix. This behavior can be turned off by setting ```drop=FALSE```.
 
 ### Subsetting: Removing missing values
 
@@ -309,6 +309,368 @@ Element wise multiplication:
 x <- matrix(1:4,2,2); y <- matrix(rep(10,4),2,2)
 x%*%y
 ```
+
+# Week 1
+The second week jumps into programming with R.
+
+## Classes
+Notes from the class videos
+
+### Control structures - If-else
+Allows you to test logical conditions and let R do things based on whether of not that condition is true.
+```
+if(<condition>) {
+  # do something
+} else {
+  # do something else
+}
+
+if(<condition1>) {
+  # do something
+} else if(<condition2> {
+  # do something different
+} else {
+  # do something else
+}
+```
+### Control structures - For Loop
+for loops take an iterator variable and assign it successive values from a sequence or vector. For loops are most commonly used for iteration over the elements of an object:
+```
+for(i in 1:10) {
+  print(i)
+}
+```
+
+for loops can also be nested but things can get hard to read very quickly:
+```
+x<- matrix(1:6,2,3)
+for(i in seq_len(nrow(x))) {
+  for(j in seq_len(ncol(x))) {
+    print[x[i,j]]
+  }
+}
+```
+
+### Control structures - While Loop
+While loops begin by testing a condition. If it is true, then they execute the loop body. Once the loop body is executed, the condition is tested again.
+```
+count <- 0
+while(count<10) {
+  print(count)
+  count<-count+1
+}
+```
+
+If not written with care, while loops may result in infinite loops. There can be more than one condition in the test, where conditions are evaluated from left to right:
+```
+z <- 5
+while(z >= 3 && z <=10) {
+  print(z)
+  coin <- rbinom(1, 1, 0.5)
+  
+  if(coin == 1) { ## random walk
+    z <- z+1
+  } else {
+    z <- z-1
+  }
+}
+```
+
+### Control structures - Repeat
+Repeat is a construct that initiates and infinite loop; these are not commonly used in statistical applications but they do have their uses. The only way to exit a repeat loop is to call ```break```
+```
+x0 <- 1
+tol <-1e-8
+
+repeat {
+  x1 <- computeEstimate()
+  
+  if (abs(x1-x0) < tol) {
+    break
+  } else {
+    x0 <- x1
+  }
+}
+```
+
+Repeat loops can be dangerous when there is no guarantee that they will stop. It is usually better to set a hard number of iterations (e.g. using a for loop) and then report whether convergence was achieved or not.
+
+### Control structures - Next
+```next``` is used to skip an iteration of a loop
+```
+for(i in 1:100) {
+  if(i <=20) {
+    ## skip the first 20 iterations
+    next
+  }
+  ### Do something here
+}
+```
+
+### Writing functions in R
+In R, the function returns whatever the last expression was.
+```
+aboveX <- function(x, threshold) {
+  use <- x>threshold
+  x[use]
+}
+```
+
+R functions also allow default arguments, as below:
+```
+aboveX <- function(x, threshold=10) {
+  use <- x>threshold
+  x[use]
+}
+```
+
+Most function will revolve around data structures and the following code creates a function calculates the mean of each column in a dataframe or matrix.
+```
+columnMean <- function(y, removeNA = TRUE) {
+  nc <- ncol(y)
+  means <- numeric(nc)
+  for(i in 1:nc) {
+    means[i] <- mean(y[,i],na.rm=removeNA)
+  }
+  means
+}
+```
+
+### Arguement Matching
+R function arguments can be matched positionally or by name. So the following calls to sd are all equivalent:
+```
+sd(mydata)
+sd(x=mydata)
+sd(x=mydata, na.rm=FALSE)
+sd(na.rm=FALSE, x=mydata)
+sd(na.rm=FALSE, mydata)
+```
+
+Even though it is legal, I don't recommend messing around with the order of the arguments too much, it can lead to considerable confusion.
+
+You can mix positional matching with matching by name. When an argument is matched by name, it is "taken out" of the argument list and the remaining unnamed arguments are matched in the order that they are listed in the function definition.
+```{r}
+args(lm)
+```
+
+### Lazy Evaluation
+Arguments to functions are evaluated lazily, so they are evaluated only as needed.
+```
+f <- function(a,b) {
+ a^2
+}
+f(2)
+```
+
+This function never actually uses the argument ```b```, so calling ```f(2)``` will not produce an error because the 2 gets possitionally matched to ```a```.
+
+### The "..." Argument
+The ```...``` argument indicates a variable number of arguments that are usually passed on to other functions.
+
+* ```...``` is often used when extending another function and you don't want to copy the entire argument list of the original function.
+```
+myplot <-function(x, y, type="l", ...) {
+  plot(x, y, type=type, ...)
+}
+```
+* Generic functions use ```...``` so that extra arguments can be passed to methods (more on this later).
+```{r}
+mean
+```
+
+The ```...``` argument is also necessary when the number of arguments passed to the function cannot be known in advance
+```{r}
+args(paste)
+```
+
+One catch with the ```...``` argument is that any arguments that appear after it on the argument list must be names explicitly and cannot be partially matched.
+
+### Symbol binding
+When R tries to bind a value to a symbol, it searches through a series of ```environments``` to find the appropriate value. When you are working on the command line and need to retrieve the value of an R object, the order is roughly:
+
+1. Search the global environment for a symbol name matching the one requested.
+2. Search the namespaces of each of the packages n the searchlist.
+
+The searchlist can be found using the ```search``` function:
+```{r}
+search()
+```
+ * The global environement or the user's workspace is always the first elemenet of the search list and the base package is always the last.
+ * The order of the packages on the search list matters
+ * User's can configure which packages get loaded on startup so you cannot assume that there will be a set list of packages available.
+ * When a user loads a package with ```library``` the namespace of that package gets put in position 2 of the search list.
+ * Note that R has separate namespaces for functions and non-functions so it's possible to have an object named c and a fucntion names c.
+
+### Scoping rules
+The scoping rules for R are the main feature that make it sifferent from the original S language.
+
+* The scoping rules determine how a value is associated with a free variable in a function
+* R uses lexical scoping or static scoping. A common alternative is dynamic scoping.
+* Related to the scoping rules is how R uses the search list to bind a value to a symbol.
+* Lexical scoping turns out to be particularly useful for simplifying statistical computations.
+
+Consider the following function:
+```
+f <- function(x, y) {
+  x^2 + y / z
+}
+```
+
+This function has two formal arguments x and y. In the body of the function there is another symbol ```z```. In this case ```z``` is called a free variable. The scoping rules of the language determine how values are assigned to the free variables. Free variables are not formal arguments and are not local variables.
+
+### Lexical scoping
+Lexical scoping means that:
+
+> the values of free variables are searched for in the environment in which the function was defined.
+
+What is an environment?
+
+* A collection of (symbol, value) pairs, i.e. x is a symbol and 3.14 might be its value.
+* Every environment has a parent environment; it is possible for an environment to have multiple "children".
+* The only environment without a parent is the empty environment.
+* A function + an environment = a closure or function closure.
+
+So what hapens when searching for the value for a free variable:
+
+* If the value of a symbol is not found in the environment in which a function was defined, then the search is continued in the parent environment.
+* The search environment continues down the sequence of parent environments until we hit the top-level environement; this is usually the global environment or the namespace of a package.
+* After the top-level environment, the search continues down the search list until we hit the empty environment. If the value for a gien symbol cannot be found by this point then and error is thrown.
+
+Why does all of this matter?
+
+* Typicaly, a function is defined in the global environment, so that the values of the free variables are just found in the user's workspace.
+* This behaviour is logical for most people and is usually the "right thing" to do.
+* However, in R you can have functions defined inside other functions
+  ** Languages like C don't let you do this
+* Now things get interesting - In this case the environment in which the function is defined is the body of another function!
+
+```{r}
+make.power <- function(n) {
+  pow <- function(x) {
+    x^n
+  }
+  pow
+}
+```
+
+This function returns another function as its value.
+
+```{r}
+cube <-make.power(3)
+square <- make.power(2)
+cube(3)
+square(3)
+```
+
+### Exploring a function closure
+What's in a function's environment?
+```{r}
+ls(environment(cube))
+get("n", environment(cube))
+```
+
+### Consequences of Lexical Scoping
+
+* In R, all objects must be stored in memory
+* All functions must carry a pointer to their respective defining environments, which could be anywhere.
+* In S-PLUS, free variables are always looked up in the global workspace, so everything can be stored on the disk because the defining environment of all the functions are the same.
+
+### Coding Standards for R
+
+1. Always use text files / text editor
+2. Indent your code
+3. Limit the width of your code (80 columns?)
+4. Limit the length of individual functions
+
+### Indenting
+
+* Indenting improves readability
+* Fixing line length (80 columns) prevents lots of nesting and very long functions
+* Suggested: Indents of 4 spaces at minimum; 8 spaces ideal
+
+### Dates and Times in R
+R has developed a special representation of dates and times
+
+* Dates are represented by the Date class
+* Times are represented by the POSIXct or the POSIXlt class
+* Dates are stored internally as the number of days since 1970-01-01
+* Tmes are stored internally as the number of seconds since 1970-01-01
+
+### Dates in R
+Dates are represented by the Date class and can be coerced from a character string using the ```as.Date()``` function.
+```{r}
+x <- as.Date("1970-01-01")
+x
+unclass(x)
+unclass(as.Date("1970-01-02"))
+```
+
+### Times in R
+Times are represented using the POSIXct or the POSIXlt class
+
+* POSIXct is just a very large integer under the hood; it use a useful class when you want to store times in something like a data frame.
+* POSIXlt is a list underneath and it stores a bunch of other useful information like the day of the week, day of the year, month, day of the month
+
+There are a number of generic functions that work on dates and times
+
+* weekdays: give the day of the week
+* months: give the month name
+* quarters: give the quarter number (“Q1”, “Q2”, “Q3”, or “Q4”)
+
+Times can be coerced from a character string using the ```as.POSIXlt``` or ```as.POSIXct``` function.
+```{r}
+x <- Sys.time()
+x
+p <- as.POSIXlt(x)
+names(unclass(p))
+p$sec
+```
+
+You can also use the POSIXct format.
+```{r}
+x <- Sys.time()
+x  ## Already in ‘POSIXct’ format
+p <- as.POSIXlt(x)
+p$sec
+```
+
+Finally, there is the strptime function in case your dates are written in a different format
+```{r}
+datestring <- "January 10, 2012 10:40"
+x <- strptime(datestring, "%B %d, %Y %H:%M")
+x
+class(x)
+```
+
+I can never remember the formatting strings. Check ?strptime for details.
+
+### Operations on Dates and Times
+You can use mathematical operations on dates and times. Well, really just + and -. You can do comparisons too (i.e. ==, <=)
+```{r}
+x <- as.Date("2012-01-01")
+y <- strptime("9 Jan 2011 11:34:21", "%d %b %Y %H:%M:%S") 
+x <- as.POSIXlt(x) 
+x-y
+```
+
+Even keeps track of leap years, leap seconds, daylight savings, and time zones.
+```{r}
+x <- as.Date("2012-03-01") 
+y <- as.Date("2012-02-28") 
+x-y
+x <- as.POSIXct("2012-10-25 01:00:00")
+y <- as.POSIXct("2012-10-25 06:00:00", tz = "GMT") 
+y-x
+```
+
+### Summary
+
+* Dates and times have special classes in R that allow for numerical and statistical calculations
+* Dates use the Date class
+* Times use the POSIXct and POSIXlt class
+* Character strings can be coerced to Date/Time classes using the strptime function or the ```as.Date```, ```as.POSIXlt```, or ```as.POSIXct```.
+
+
 
 
 
