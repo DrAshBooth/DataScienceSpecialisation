@@ -550,6 +550,141 @@ Answer
 qplot(votes, rating, data = movies) + geom_smooth()
 ```
 
+# Week 3 
+
+## Classes
+
+## Assignment 2 - week 3
+
+### Introduction
+
+Fine particulate matter (PM2.5) is an ambient air pollutant for which there is strong evidence that it is harmful to human health. In the United States, the Environmental Protection Agency (EPA) is tasked with setting national ambient air quality standards for fine PM and for tracking the emissions of this pollutant into the atmosphere. Approximatly every 3 years, the EPA releases its database on emissions of PM2.5. This database is known as the National Emissions Inventory (NEI). You can read more information about the NEI at the EPA National Emissions Inventory web site.
+
+For each year and for each type of PM source, the NEI records how many tons of PM2.5 were emitted from that source over the course of the entire year. The data that you will use for this assignment are for 1999, 2002, 2005, and 2008.
+
+### Data
+
+The data for this assignment are available from the course web site as a single zip file:
+
+The zip file contains two files:
+
+PM2.5 Emissions Data (summarySCC_PM25.rds): This file contains a data frame with all of the PM2.5 emissions data for 1999, 2002, 2005, and 2008. For each year, the table contains number of tons of PM2.5 emitted from a specific type of source for the entire year. 
+
+* fips: A five-digit number (represented as a string) indicating the U.S. county
+
+* SCC: The name of the source as indicated by a digit string (see source code classification table)
+
+* Pollutant: A string indicating the pollutant
+
+* Emissions: Amount of PM2.5 emitted, in tons
+
+* type: The type of source (point, non-point, on-road, or non-road)
+
+* year: The year of emissions recorded
+
+Source Classification Code Table (Source_Classification_Code.rds): This table provides a mapping from the SCC digit strings in the Emissions table to the actual name of the PM2.5 source. The sources are categorized in a few different ways from more general to more specific and you may choose to explore whatever categories you think are most useful. For example, source “10100101” is known as “Ext Comb /Electric Gen /Anthracite Coal /Pulverized Coal”.
+
+You can read each of the two files using the readRDS() function in R. For example, reading in each file can be done with the following code:
+
+```{r}
+## This first line will likely take a few seconds. Be patient!
+NEI <- readRDS("./data/summarySCC_PM25.rds")
+SCC <- readRDS("./data/Source_Classification_Code.rds")
+```
+
+### Assignment
+
+The overall goal of this assignment is to explore the National Emissions Inventory database and see what it say about fine particulate matter pollution in the United states over the 10-year period 1999–2008. You may use any R package you want to support your analysis.
+
+Questions
+
+You must address the following questions and tasks in your exploratory analysis. For each question/task you will need to make a single plot. Unless specified, you can use any plotting system in R to make your plot.
+
+Have total emissions from PM2.5 decreased in the United States from 1999 to 2008? Using the base plotting system, make a plot showing the total PM2.5 emission from all sources for each of the years 1999, 2002, 2005, and 2008.
+
+```{r}
+Emissions <- aggregate(NEI[, 'Emissions'], by = list(NEI$year), FUN = sum)
+Emissions$PM <- round(Emissions[, 2] / 1000, 2)
+
+png(filename = "plot1.png")
+barplot(Emissions$PM, names.arg = Emissions$Group.1, main = expression('Total Emission of PM'[2.5]), xlab = 'year', ylab = expression(paste('PM', ''[2.5], ' / Kilotons')), col="blue")
+dev.off()
+```
+
+
+Have total emissions from PM2.5 decreased in the Baltimore City, Maryland (fips == "24510") from 1999 to 2008? Use the base plotting system to make a plot answering this question.
+
+```{r}
+# Subsets data and appends two years in one data frame
+MD <- subset(NEI, fips == '24510')
+
+png(filename = 'plot2.png')
+barplot(tapply(X = MD$Emissions, INDEX = MD$year, FUN = sum), main = 'Total Emission in Baltimore', xlab = 'year', ylab = expression(paste('PM', ''[2.5], ' / Kilotons')),col="blue")
+dev.off()
+```
+
+Of the four types of sources indicated by the type (point, nonpoint, onroad, nonroad) variable, which of these four sources have seen decreases in emissions from 1999–2008 for Baltimore City? Which have seen increases in emissions from 1999–2008? Use the ggplot2 plotting system to make a plot answer this question.
+
+```{r}
+library(ggplot2)
+MD <- subset(NEI, fips == 24510)
+MD$year <- factor(MD$year, levels = c('1999', '2002', '2005', '2008'))
+
+png('plot3.png', width = 800, height = 500, units = 'px')
+ggplot(data = MD, aes(x = year, y = log(Emissions))) + facet_grid(. ~ type) + geom_boxplot(aes(fill = type)) + stat_boxplot(geom = 'errorbar') + ylab(expression(paste('Log', ' of PM'[2.5]))) + xlab('year') + ggtitle('Emissions by type in Baltimore') + guides(fill = F)
+dev.off()
+```
+
+Across the United States, how have emissions from coal combustion-related sources changed from 1999–2008?
+
+```{r}
+SCC.coal = SCC[grepl("coal", SCC$Short.Name, ignore.case = TRUE), ]
+
+merged <- merge(x = NEI, y = SCC.coal, by = 'SCC')
+merged.sum <- aggregate(merged[, 'Emissions'], by = list(merged$year), sum)
+colnames(merged.sum) <- c('Year', 'Emissions')
+
+png(filename = 'plot4.png')
+ggplot(data = merged.sum, aes(x = Year, y = Emissions / 1000)) + geom_line(size=1.5,aes(group = 1, col = Emissions)) + ggtitle(expression('Total Emissions')) + ylab(expression(paste('PM', ''[2.5], ' / kilotons'))) + theme(legend.position = 'none')
+dev.off()
+```
+
+How have emissions from motor vehicle sources changed from 1999–2008 in Baltimore City?
+
+```{r}
+
+NEI$year <- factor(NEI$year, levels = c('1999', '2002', '2005', '2008'))
+dt.onroad <- subset(NEI, fips == 24510 & type == 'ON-ROAD')
+
+# Aggregates
+dt.df <- aggregate(dt.onroad[, 'Emissions'], by = list(dt.onroad$year), sum)
+colnames(dt.df) <- c('year', 'Emissions')
+
+png('plot5.png')
+ggplot(data = dt.df, aes(x = year, y = Emissions)) + geom_bar(aes(fill = year), stat = "identity") + guides(fill = F) + ggtitle('Total Emissions from Motor Vehicles,  Balitmore') + ylab(expression('PM'[2.5])) + xlab('year')
+dev.off()
+```
+
+Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
+
+```{r}
+mary.onroad <- subset(NEI, fips == '24510' & type == 'ON-ROAD')
+cali.onroad <- subset(NEI, fips == '06037' & type == 'ON-ROAD')
+
+mary.DF <- aggregate(mary.onroad[, 'Emissions'], by = list(mary.onroad$year), sum)
+colnames(mary.DF) <- c('Year', 'Emissions')
+mary.DF$City <- paste(rep('Ba', 4))
+
+cali.DF <- aggregate(cali.onroad[, 'Emissions'], by = list(cali.onroad$year), sum)
+colnames(cali.DF) <- c('Year', 'Emissions')
+cali.DF$City <- paste(rep('LA', 4))
+
+DF <- as.data.frame(rbind(mary.DF, cali.DF))
+
+png('plot6.png')
+ggplot(data = DF, aes(x = Year, y = Emissions)) + geom_bar(aes(fill = Year),stat = "identity") + guides(fill = F) + ggtitle('Emissions from Motor Vehicles,  LA vs. Ba') + ylab(expression('PM'[2.5])) + xlab('year') + theme(legend.position = 'none') + geom_text(aes(label = round(Emissions, 0), size = 1, hjust = 0.5, vjust = -1)) + facet_grid(. ~ City)
+dev.off()
+```
 
 
 
