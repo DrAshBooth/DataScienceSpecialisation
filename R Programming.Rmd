@@ -870,6 +870,386 @@ corr <- function(directory, threshold=0) {
 
 ```
 
+# Week 3 - Loop Functions and Debugging
+This week is what I call "loop functions" in R, which are functions that allow you to execute loop-like behavior in a compact form. These functions typically have the word "apply" in them and are particularly convenient when you need to execute a loop on the command line when using R interactively. These functions are some of the more interesting functions of the R language. This week we also cover the debugger that comes with R and how to interpret its output to help you find problems in your programs and functions. The lecture videos for this week are:
+
+* Loop functions: lapply apply tapply split mapply
+* Debugger: Part 1 Part 2 Part 3
+
+### Learning Objectives
+By the end of this week you should be able to:
+
+* Define an anonymous function and describe its use in loop functions [see lapply]
+* Describe how to start the R debugger for an arbitrary R function
+* Describe what the traceback() function does and what is the function call stack
 
 
+## Classes
+### Looping on the Command Line
+Writing for, while loops is useful when programming but not particularly easy when working interactively on the command line. There are some functions which implement looping to make life easier.
+
+* lapply: Loop over a list and evaluate a function on each element
+
+* sapply: Same as lapply but try to simplify the result
+
+* apply: Apply a function over the margins of an array
+
+* tapply: Apply a function over subsets of a vector
+
+* mapply: Multivariate version of lapply
+
+An auxiliary function split is also useful, particularly in conjunction with lapply.
+
+### lapply
+lapply takes three arguments: (1) a list X; (2) a function (or the name of a function) FUN; (3) other arguments via its ... argument. If X is not a list, it will be coerced to a list using as.list.
+```{r}
+lapply
+```
+The actual looping is done internally in C code.
+
+lapply always returns a list, regardless of the class of the input.
+```{r}
+x <- list(a = 1:5, b = rnorm(10))
+lapply(x, mean)
+```
+
+```{r}
+x <- list(a = 1:4, b = rnorm(10), c = rnorm(20, 1), d = rnorm(100, 5))
+lapply(x, mean)
+```
+
+```{r} 
+x <- 1:4
+lapply(x, runif, min = 0, max = 10)
+```
+
+lapply and friends make heavy use of anonymous functions.
+```{r}
+x <- list(a = matrix(1:4, 2, 2), b = matrix(1:6, 3, 2)) 
+lapply(x, function(elt) elt[,1])
+```
+
+### sapply
+sapply will try to simplify the result of lapply if possible.
+
+* If the result is a list where every element is length 1, then a vector is returned
+
+* If the result is a list where every element is a vector of the same length (> 1), a matrix is returned.
+
+* If it can’t figure things out, a list is returned
+
+```{r}
+x <- list(a = 1:4, b = rnorm(10), c = rnorm(20, 1), d = rnorm(100, 5))
+sapply(x, mean)
+```
+
+### apply
+apply is used to a evaluate a function (often an anonymous one) over the margins of an array.
+
+* It is most often used to apply a function to the rows or columns of a matrix
+
+* It can be used with general arrays, e.g. taking the average of an array of matrices
+
+* It is not really faster than writing a loop, but it works in one line!
+
+```{r}
+str(apply)
+```
+
+* X is an array
+* MARGIN is an integer vector indicating which margins should be “retained”.
+* FUN is a function to be applied
+* ... is for other arguments to be passed to FUN
+
+```{r}
+x <- matrix(rnorm(200), 20, 10)
+apply(x, 2, mean)
+apply(x, 1, sum)
+```
+
+### col/row sums and means
+For sums and means of matrix dimensions, we have some shortcuts.
+
+* rowSums = apply(x, 1, sum)
+* rowMeans = apply(x, 1, mean)
+* colSums = apply(x, 2, sum)
+* colMeans = apply(x, 2, mean)
+
+The shortcut functions are much faster, but you won’t notice unless you’re using a large matrix.
+
+Quantiles of the rows of a matrix:
+```{r}
+x <- matrix(rnorm(200), 20, 10)
+apply(x, 1, quantile, probs = c(0.25, 0.75))
+```
+
+Average matrix in an array
+```{r}
+a <- array(rnorm(2 * 2 * 10), c(2, 2, 10))
+apply(a, c(1, 2), mean)
+```
+
+### mapply
+mapply is a multivariate apply of sorts which applies a function in parallel over a set of arguments.
+```{r}
+str(mapply)
+function (FUN, ..., MoreArgs = NULL, SIMPLIFY = TRUE,
+          USE.NAMES = TRUE)
+```
+
+* FUN is a function to apply
+* ... contains arguments to apply over
+* MoreArgs is a list of other arguments to FUN.
+* SIMPLIFY indicates whether the result should be simplified
+
+The following is tedious to type
+```
+list(rep(1, 4), rep(2, 3), rep(3, 2), rep(4, 1))
+```
+
+Instead we can do:
+```{r}
+mapply(rep, 1:4, 4:1)
+```
+
+### Vectorizing a Function
+```{r}
+noise <- function(n, mean, sd) {
+  rnorm(n, mean, sd)
+  }
+noise(5, 1, 2)
+mapply(noise, 1:5, 1:5, 2)
+```
+
+Which is the same as
+```
+list(noise(1, 1, 2), noise(2, 2, 2),
+     noise(3, 3, 2), noise(4, 4, 2),
+     noise(5, 5, 2))
+```
+
+### tapply
+tapply is used to apply a function over subsets of a vector. I don’t know why it’s called tapply
+```{r}
+> str(tapply)
+```
+
+* X is a vector
+* INDEX is a factor or a list of factors (or else they are coerced to factors)
+* FUN is a function to be applied
+* ... contains other arguments to be passed FUN
+* simplify, should we simplify the result?
+
+Take group means.
+```{r}
+x <- c(rnorm(10), runif(10), rnorm(10, 1))
+f <- gl(3, 10)
+f
+tapply(x, f, mean)
+```
+
+Find group ranges.
+```{r}
+tapply(x, f, range)
+```
+
+### split
+split takes a vector or other objects and splits it into groups determined by a factor or list of factors.
+```{r}
+str(split)
+```
+
+* x is a vector (or list) or data frame
+* f is a factor (or coerced to one) or a list of factors
+* drop indicates whether empty factors levels should be dropped
+
+A common idiom is split followed by an lapply.
+```{r}
+x <- c(rnorm(10), runif(10), rnorm(10, 1))
+f <- gl(3, 10)
+lapply(split(x, f), mean)
+```
+
+### Splitting a Data Frame
+```{r}
+library(datasets)
+head(airquality)
+s <- split(airquality, airquality$Month)
+sapply(s, function(x) colMeans(x[, c("Ozone", "Solar.R", "Wind")],na.rm = TRUE))
+```
+
+Splitting on More than One Level
+```{r}
+x <- rnorm(10)
+f1 <- gl(2, 5)
+f2 <- gl(5, 2)
+f1
+f2
+interaction(f1, f2)
+```
+
+Interactions can create empty levels.
+```{r}
+str(split(x, list(f1, f2)))
+```
+
+but these can be dropped:
+```{r}
+str(split(x, list(f1, f2), drop = TRUE))
+```
+
+### Debugging in R
+Indications that something’s not right
+
+* message: A generic notification/diagnostic message produced by the message function; execution of the function continues
+* warning: An indication that something is wrong but not necessarily fatal; execution of the function continues; generated by the warning function
+* error: An indication that a fatal problem has occurred; execution stops; produced by the stop function
+* condition: A generic concept for indicating that something unexpected can occur; programmers can create their own conditions
+
+Warning
+```{r}
+log(-1)
+```
+
+How do you know that something is wrong with your function?
+
+* What was your input? How did you call the function?
+* What were you expecting? Output, messages, other results?
+* What did you get?
+* How does what you get differ from what you were expecting?
+* Were your expectations correct in the first place?
+* Can you reproduce the problem (exactly)?
+
+### Debugging Tools in R
+The primary tools for debugging functions in R are
+
+* traceback: prints out the function call stack after an error occurs; does nothing if there’s no error
+* debug: flags a function for “debug” mode which allows you to step through execution of a function one line at a time
+* browser: suspends the execution of a function wherever it is called and puts the function in debug mode
+* trace: allows you to insert debugging code into a function a specific places
+* recover: allows you to modify the error behavior so that you can browse the function call stack
+
+These are interactive tools specifically designed to allow you to pick through a function. There’s also the more blunt technique of inserting print/cat statements in the function.
+
+### Traceback
+```{r}
+rm(x)
+mean(x)
+traceback()
+```
+
+```{r}
+lm(y ~ x)
+traceback()
+```
+
+### debug
+```
+> debug(lm)
+> lm(y ~ x)
+debugging in: lm(y ~ x)
+debug: {
+    ret.x <- x
+    ret.y <- y
+    cl <- match.call()
+    ...
+    if (!qr)
+        z$qr <- NULL 
+    z
+} 
+Browse[2]>
+...
+```
+
+### recover
+```
+> options(error = recover)
+> read.csv("nosuchfile")
+Error in file(file, "rt") : cannot open the connection
+In addition: Warning message:
+In file(file, "rt") :
+  cannot open file ’nosuchfile’: No such file or directory
+
+Enter a frame number, or 0 to exit
+
+1: read.csv("nosuchfile")
+2: read.table(file = file, header = header, sep = sep, quote = quote, dec =
+3: file(file, "rt")
+
+Selection:
+```
+
+### Summary
+
+* There are three main indications of a problem/condition: message, warning, error
+
+  + only an error is fatal
+  
+* When analyzing a function with a problem, make sure you can reproduce the problem, clearly state your expectations and how the output differs from your expectation
+
+* Interactive debugging tools traceback, debug, browser, trace, and recover can be used to find problematic code in functions
+
+* Debugging tools are not a substitute for thinking!
+
+## Quiz - wk 3
+
+### Question 1
+
+Take a look at the 'iris' dataset that comes with R. The data can be loaded with the code:
+```{r}
+library(datasets)
+data(iris)
+```
+
+A description of the dataset can be found by running
+```
+?iris
+```
+
+There will be an object called 'iris' in your workspace. In this dataset, what is the mean of 'Sepal.Length' for the species virginica? (Please only enter the numeric result and nothing else.)
+
+```{r}
+mean(iris[iris$Species == "virginica",]$Sepal.Length)
+```
+
+### Question 2
+
+Continuing with the 'iris' dataset from the previous Question, what R code returns a vector of the means of the variables 'Sepal.Length', 'Sepal.Width', 'Petal.Length', and 'Petal.Width'?
+
+```{r}
+apply(iris[, 1:4], 2, mean)
+```
+
+### Question 3
+Load the 'mtcars' dataset in R with the following code
+```{r}
+library(datasets)
+data(mtcars)
+```
+
+There will be an object names 'mtcars' in your workspace. You can find some information about the dataset by running
+```
+?mtcars
+```
+
+How can one calculate the average miles per gallon (mpg) by number of cylinders in the car (cyl)?
+```{r}
+with(mtcars, tapply(mpg, cyl, mean))
+```
+
+### Question 4
+Continuing with the 'mtcars' dataset from the previous Question, what is the absolute difference between the average horsepower of 4-cylinder cars and the average horsepower of 8-cylinder cars?
+```{r}
+mean(mtcars[mtcars$cyl == "8",]$hp) - mean(mtcars[mtcars$cyl == "4",]$hp)
+```
+
+### Question 5
+If you run
+```
+debug(ls)
+```
+
+what happens when you next call the 'ls' function?
+
+Execution of 'ls' will suspend at the beginning of the function and you will be in the browser.
 
