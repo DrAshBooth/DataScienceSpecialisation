@@ -993,8 +993,6 @@ apply(a, c(1, 2), mean)
 mapply is a multivariate apply of sorts which applies a function in parallel over a set of arguments.
 ```{r}
 str(mapply)
-function (FUN, ..., MoreArgs = NULL, SIMPLIFY = TRUE,
-          USE.NAMES = TRUE)
 ```
 
 * FUN is a function to apply
@@ -1031,7 +1029,7 @@ list(noise(1, 1, 2), noise(2, 2, 2),
 ### tapply
 tapply is used to apply a function over subsets of a vector. I don’t know why it’s called tapply
 ```{r}
-> str(tapply)
+str(tapply)
 ```
 
 * X is a vector
@@ -1132,15 +1130,23 @@ The primary tools for debugging functions in R are
 These are interactive tools specifically designed to allow you to pick through a function. There’s also the more blunt technique of inserting print/cat statements in the function.
 
 ### Traceback
-```{r}
-rm(x)
-mean(x)
-traceback()
+```
+> mean(x)
+> traceback()
+1: mean(x)
 ```
 
-```{r}
-lm(y ~ x)
-traceback()
+```
+> lm(y ~ x)
+Error in eval(expr, envir, enclos) : object 'y' not found
+> traceback()
+7: eval(expr, envir, enclos)
+6: eval(predvars, data, env)
+5: model.frame.default(formula = y ~ x, drop.unused.levels = TRUE)
+4: stats::model.frame(formula = y ~ x, drop.unused.levels = TRUE)
+3: eval(expr, envir, enclos)
+2: eval(mf, parent.frame())
+1: lm(y ~ x)
 ```
 
 ### debug
