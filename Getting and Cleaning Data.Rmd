@@ -281,6 +281,619 @@ sst <- read.fwf(file=url(fileUrl),
 sum(sst[,4])
 ```
 
+# Week 3
+The second week focusses on subsetting reshaping nd merging data.
+
+## Classes
+
+### Subsetting - quick review
+```{r}
+set.seed(13435)
+X <- data.frame("var1"=sample(1:5),"var2"=sample(6:10),"var3"=sample(11:15))
+X <- X[sample(1:5),]; X$var2[c(1,3)] = NA
+X
+```
+
+Subset by column index
+```{r}
+X[,1]
+```
+
+Or by variable name:
+```{r}
+X[,"var1"]
+```
+
+Subset on rows and columns at the same time:
+```{r}
+X[1:2,"var2"]
+```
+
+### Logicals ands and ors
+```{r}
+X[(X$var1 <= 3 & X$var3 > 11),]
+```
+
+```{r}
+X[(X$var1 <= 3 | X$var3 > 15),]
+```
+
+### Dealing with missing values
+```{r}
+X[which(X$var2 > 8),]
+```
+
+### Sorting
+```{r}
+sort(X$var1)
+```
+
+```{r}
+sort(X$var1,decreasing=TRUE)
+```
+
+```{r}
+sort(X$var2,na.last=TRUE)
+```
+
+### Ordering
+```{r}
+X[order(X$var1),]
+```
+
+```{r}
+X[order(X$var1,X$var3),]
+```
+
+### Ordering with plyr
+```{r}
+library(plyr)
+arrange(X,var1)
+```
+
+```{r}
+arrange(X,desc(var1))
+```
+
+### Adding rows and columns
+```{r}
+X$var4 <- rnorm(5)
+X
+```
+
+```{r}
+Y <- cbind(X,rnorm(5))
+Y
+```
+
+### Getting the data from the web
+```{r}
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl <- "https://data.baltimorecity.gov/api/views/k5ry-ef3g/rows.csv?accessType=DOWNLOAD"
+download.file(fileUrl,destfile="./data/restaurants.csv",method="curl")
+restData <- read.csv("./data/restaurants.csv")
+```
+
+### Look at a bit of the data
+```{r}
+head(restData,n=3)
+```
+
+``{r}
+tail(restData,n=3)
+```
+
+### Make summary
+```{r}
+summary(restData)
+```
+
+### More in depth information
+```{r}
+str(restData)
+```
+
+### Quantiles of quantitative variables
+```{r}
+quantile(restData$councilDistrict,na.rm=TRUE)
+```
+
+```{r}
+quantile(restData$councilDistrict,probs=c(0.5,0.75,0.9))
+```
+
+### Make table
+```{r}
+table(restData$zipCode,useNA="ifany")
+```
+
+### Check for missing values
+```{r}
+sum(is.na(restData$councilDistrict))
+```
+
+```{r}
+any(is.na(restData$councilDistrict))
+```
+
+```{r}
+all(restData$zipCode > 0)
+```
+
+### Values with specific characteristics
+```{r}
+table(restData$zipCode %in% c("21212"))
+```
+
+```{r}
+table(restData$zipCode %in% c("21212","21213"))
+```
+
+```{r}
+head(restData[restData$zipCode %in% c("21212","21213"),])
+```
+
+### Cross tabs
+```{r}
+data(UCBAdmissions)
+DF = as.data.frame(UCBAdmissions)
+summary(DF)
+xt <- xtabs(Freq ~ Gender + Admit,data=DF)
+xt
+```
+
+### Flat tables
+```{r}
+warpbreaks$replicate <- rep(1:9, len = 54)
+xt = xtabs(breaks ~.,data=warpbreaks)
+ftable(xt)
+```
+
+### Size of a data set
+```{r}
+fakeData = rnorm(1e5)
+object.size(fakeData)
+print(object.size(fakeData),units="Mb")
+```
+
+### Why create new variables?
+
+* Often the raw data won't have a value you are looking for
+* You will need to transform the data to get the values you would like
+* Usually you will add those values to the data frames you are working with
+* Common variables to create
+
+  + Missingness indicators
+  + "Cutting up" quantitative variables
+  + Applying transforms
+
+### Creating sequences
+Sometimes you need an index for your data set
+```{r}
+s1 <- seq(1,10,by=2) ; s1
+s2 <- seq(1,10,length=3); s2
+x <- c(1,3,8,25,100); seq(along = x)
+```
+
+### Subsetting variables
+```{r}
+restData$nearMe = restData$neighborhood %in% c("Roland Park", "Homeland")
+table(restData$nearMe)
+```
+
+### Creating binary variables
+```{r}
+restData$zipWrong = ifelse(restData$zipCode < 0, TRUE, FALSE)
+table(restData$zipWrong,restData$zipCode < 0)
+```
+
+### Creating categorical variables
+```{r}
+restData$zipGroups = cut(restData$zipCode,breaks=quantile(restData$zipCode))
+table(restData$zipGroups)
+table(restData$zipGroups,restData$zipCode)
+```
+
+### Creating factor variables
+```{r}
+restData$zcf <- factor(restData$zipCode)
+restData$zcf[1:10]
+class(restData$zcf)
+```
+
+### Levels of factor variables
+```{r}
+yesno <- sample(c("yes","no"),size=10,replace=TRUE)
+yesnofac = factor(yesno,levels=c("yes","no"))
+relevel(yesnofac,ref="yes")
+as.numeric(yesnofac)
+```
+
+### Common transforms
+
+* abs(x) absolute value
+* sqrt(x) square root
+* ceiling(x) ceiling(3.475) is 4
+* floor(x) floor(3.475) is 3
+* round(x,digits=n) roun(3.475,digits=2) is 3.48
+* signif(x,digits=n) signif(3.475,digits=2) is 3.5
+* cos(x), sin(x) etc.
+* log(x) natural logarithm
+* log2(x), log10(x) other common logs
+* exp(x) exponentiating x
+
+### The goal is tidy data
+
+* Each variable forms a column
+* Each observation forms a row
+* Each table/file stores data about one kind of observation (e.g. people/hospitals).
+
+### Start with reshaping
+```{r}
+library(reshape2)
+head(mtcars)
+```
+
+### Melting data frames
+```{r}
+mtcars$carname <- rownames(mtcars)
+carMelt <- melt(mtcars,id=c("carname","gear","cyl"),measure.vars=c("mpg","hp"))
+head(carMelt,n=3)
+tail(carMelt,n=3)
+```
+
+### Casting data frames
+```{r}
+cylData <- dcast(carMelt, cyl ~ variable)
+cylData
+cylData <- dcast(carMelt, cyl ~ variable,mean)
+cylData
+```
+
+### Averaging values
+```{r}
+head(InsectSprays)
+tapply(InsectSprays$count,InsectSprays$spray,sum)
+```
+
+### Another way - plyr package
+```{r}
+library("plyr")
+ddply(InsectSprays,.(spray),summarize,sum=sum(count))
+```
+
+### Creating a new variable
+```{r}
+spraySums <- ddply(InsectSprays,.(spray),summarize,sum=ave(count,FUN=sum))
+dim(spraySums)
+head(spraySums)
+```
+
+### More information
+
+* A tutorial from the developer of plyr - http://plyr.had.co.nz/09-user/
+* A nice reshape tutorial http://www.slideshare.net/jeffreybreen/reshaping-data-in-r
+* A good plyr primer - http://www.r-bloggers.com/a-quick-primer-on-split-apply-combine-problems/
+* See also the functions
+
+  + acast - for casting as multi-dimensional arrays
+  + arrange - for faster reordering without using order() commands
+  + mutate - adding new variables
+
+### Managing Data Frames with dplyr
+The data frame is a key data structure in statistics and in R.
+
+* There is one observation per row
+* Each column represents a variable or measure or characteristic
+* Primary implementation that you will use is the default R implementation
+* Other implementations, particularly relational databases systems
+
+dplyr:
+
+* Developed by Hadley Wickham of RStudio
+* An optimized and distilled version of plyr package (also by Hadley)
+* Does not provide any "new"" functionality per se, but greatly simplifies existing functionality in R
+* Provides a "grammar" (in particular, verbs) for data manipulation
+* Is very fast, as many key operations are coded in C++
+
+### dplyr Verbs
+
+* select: return a subset of the columns of a data frame
+* filter: extract a subset of rows from a data frame based on logical conditions
+* arrange: reorder rows of a data frame
+* rename: rename variables in a data frame
+* mutate: add new variables/columns or transform existing variables
+* summarise / summarize: generate summary statistics of different variables in the data frame, possibly within strata
+
+There is also a handy print method that prevents you from printing a lot of data to the console.
+
+dplyr Properties
+
+* The first argument is a data frame.
+* The subsequent arguments describe what to do with it, and you can refer to columns in the data frame directly without using the $ operator (just use the names).
+* The result is a new data frame
+* Data frames must be properly formatted and annotated for this to all be useful
+
+### Load the dplyr package
+This step is important!
+```{r}
+library(dplyr)
+```
+
+
+### Select
+```
+chicago <- readRDS("chicago.rds")
+dim(chicago)
+head(select(chicago, 1:5))
+```
+
+```
+> names(chicago)[1:3]
+[1] "city" "tmpd" "dptp"
+> head(select(chicago, city:dptp))
+city tmpd dptp
+1 chic 31.5 31.500
+2 chic 33.0 29.875
+3 chic 33.0 27.375
+4 chic 29.0 28.625
+5 chic 32.0 28.875
+6 chic 40.0 35.125
+```
+
+In dplyr you can do
+```
+head(select(chicago, -(city:dptp)))
+```
+
+Equivalent base R
+```
+i <- match("city", names(chicago))
+j <- match("dptp", names(chicago))
+head(chicago[, -(i:j)])
+```
+
+### Filter
+```
+> chic.f <- filter(chicago, pm25tmean2 > 30)
+> head(select(chic.f, 1:3, pm25tmean2), 5)
+city tmpd dptp pm25tmean2
+1 chic 23 21.9 38.10
+2 chic 28 25.8 33.95
+3 chic 55 51.3 39.40
+4 chic 59 53.7 35.40
+```
+
+```
+chic.f <- filter(chicago, pm25tmean2 > 30 & tmpd > 80)
+head(select(chic.f, 1:3, pm25tmean2, tmpd), 10)
+```
+
+### arrange
+Reordering rows of a data frame (while preserving corresponding order of other columns) is normally a pain to do in R.
+
+```
+> chicago <- arrange(chicago, date)
+> head(select(chicago, date, pm25tmean2), 3)
+ date pm25tmean2
+ 1 1987-01-01 NA
+ 2 1987-01-02 NA
+ 3 1987-01-03 NA
+> tail(select(chicago, date, pm25tmean2), 3)
+date pm25tmean2
+6938 2005-12-29 7.45000
+6939 2005-12-30 15.05714
+6940 2005-12-31 15.00000
+```
+
+Columns can be arranged in descending order too.
+```
+> chicago <- arrange(chicago, desc(date))
+> head(select(chicago, date, pm25tmean2), 3)
+date pm25tmean2
+1 2005-12-31 15.00000
+2 2005-12-30 15.05714
+3 2005-12-29 7.45000
+```
+
+### rename
+Renaming a variable in a data frame in R is surprising hard to do!
+```
+> head(chicago[, 1:5], 3)
+city tmpd dptp date pm25tmean2
+1 chic 35 30.1 2005-12-31 15.00000
+2 chic 36 31.0 2005-12-30 15.05714
+3 chic 35 29.4 2005-12-29 7.45000
+> chicago <- rename(chicago, dewpoint = dptp,
+> pm25 = pm25tmean2)
+```
+
+### mutate
+```
+> chicago <- mutate(chicago,
+> pm25detrend=pm25-mean(pm25, na.rm=TRUE))
+> head(select(chicago, pm25, pm25detrend))
+pm25 pm25detrend
+1 15.00000 -1.230958
+2 15.05714 -1.173815
+3 7.45000 -8.780958
+4 17.75000 1.519042
+5 23.56000 7.329042
+6 8.40000 -7.830958
+```
+
+### group_by
+Generating summary statistics by stratum
+```
+> chicago <- mutate(chicago,
+> tempcat = factor(1 * (tmpd > 80),
+> labels = c("cold", "hot")))
+> hotcold <- group_by(chicago, tempcat)
+> summarize(hotcold, pm25 = mean(pm25, na.rm = TRUE),
+> o3 = max(o3tmean2),
+> no2 = median(no2tmean2))
+Source: local data frame [3 x 4]
+
+tempcat pm25 o3 no2
+1 cold 15.97807 66.587500 24.54924
+2 hot 26.48118 62.969656 24.93870
+3 NA 47.73750 9.416667 37.44444
+```
+
+dplyr introduces the pipeline operator %>%
+```
+chicago %>% mutate(month = as.POSIXlt(date)$mon + 1)
+%>% group_by(month)
+%>% summarize(pm25 = mean(pm25, na.rm = TRUE), o3 = max(o3tmean2, na.rm = TRUE), no2 = median(no2tmean2, na.rm = TRUE))
+```
+
+Once you learn the dplyr "grammar" there are a few additional benefits
+
+* dplyr can work with other data frame "backends"
+* data.table for large fast tables
+* SQL interface for relational databases via the DBI package
+
+### Merging data
+
+### Peer review data
+```{r}
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl1 = "https://dl.dropboxusercontent.com/u/7710864/data/reviews-apr29.csv"
+fileUrl2 = "https://dl.dropboxusercontent.com/u/7710864/data/solutions-apr29.csv"
+download.file(fileUrl1,destfile="./data/reviews.csv",method="curl")
+download.file(fileUrl2,destfile="./data/solutions.csv",method="curl")
+reviews = read.csv("./data/reviews.csv"); solutions <- read.csv("./data/solutions.csv")
+head(reviews,2)
+head(solutions,2)
+```
+
+### Merging data - merge()
+
+* Merges data frames
+* Important parameters: x,y,by,by.x,by.y,all
+```{r}
+names(reviews)
+names(solutions)
+mergedData = merge(reviews,solutions,by.x="solution_id",by.y="id",all=TRUE)
+head(mergedData)
+```
+
+### Default - merge all common column names
+```{r}
+intersect(names(solutions),names(reviews))
+mergedData2 = merge(reviews,solutions,all=TRUE)
+head(mergedData2)
+```
+
+### Using join in the plyr package
+Faster, but less full featured - defaults to left join, see help file for more
+```{r}
+df1 = data.frame(id=sample(1:10),x=rnorm(10))
+df2 = data.frame(id=sample(1:10),y=rnorm(10))
+arrange(join(df1,df2),id)
+```
+
+If you have multiple data frames
+```{r}
+df1 = data.frame(id=sample(1:10),x=rnorm(10))
+df2 = data.frame(id=sample(1:10),y=rnorm(10))
+df3 = data.frame(id=sample(1:10),z=rnorm(10))
+dfList = list(df1,df2,df3)
+join_all(dfList)
+```
+
+# Quiz - Week 3
+
+## Question 1
+
+The American Community Survey distributes downloadable data about United States communities. Download the 2006 microdata survey about housing for the state of Idaho using download.file() from here:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06hid.csv
+
+and load the data into R. The code book, describing the variable names is here:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FPUMSDataDict06.pdf
+
+Create a logical vector that identifies the households on greater than 10 acres who sold more than $10,000 worth of agriculture products. Assign that logical vector to the variable agricultureLogical. Apply the which() function like this to identify the rows of the data frame where the logical vector is TRUE. which(agricultureLogical) What are the first 3 values that result?
+
+```{r}
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl = "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06hid.csv"
+download.file(fileUrl,destfile="./data/ss06hid.csv",method="curl")
+ss06hid = read.csv("./data/ss06hid.csv")
+agricultureLogical <- (ss06hid$ACR == 3 & ss06hid$AGS == 6)
+which(agricultureLogical)[1:3]
+```
+
+## Question 2
+
+Using the jpeg package read in the following picture of your instructor into R
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fjeff.jpg
+
+Use the parameter native=TRUE. What are the 30th and 80th quantiles of the resulting data? (some Linux systems may produce an answer 638 different for the 30th quantile)
+
+```{r}
+library("jpeg")
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl = "https://d396qusza40orc.cloudfront.net/getdata%2Fjeff.jpg"
+download.file(fileUrl,destfile="./data/jeff.jpg",method="curl",mode="wb")
+img <- readJPEG("./data/jeff.jpg", native = TRUE)
+quantile(img, probs = c(0.3, 0.8))
+```
+
+## Question 3
+
+Load the Gross Domestic Product data for the 190 ranked countries in this data set:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv
+
+Load the educational data from this data set:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv
+
+Match the data based on the country shortcode. How many of the IDs match? Sort the data frame in descending order by GDP rank (so United States is last). What is the 13th country in the resulting data frame?
+
+Original data sources: http://data.worldbank.org/data-catalog/GDP-ranking-table http://data.worldbank.org/data-catalog/GDP-ranking-table
+
+```{r}
+library("data.table")
+if(!file.exists("./data")){dir.create("./data")}
+fileUrl = "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv"
+download.file(fileUrl,destfile="./data/GDP.csv",method="curl")
+dtGDP <- data.table(read.csv("./data/GDP.csv", skip = 4, nrows = 215))
+dtGDP <- dtGDP[X != ""]
+dtGDP <- dtGDP[, list(X, X.1, X.3, X.4)]
+setnames(dtGDP, c("X", "X.1", "X.3", "X.4"), c("CountryCode", "rankingGDP", "Long.Name", "gdp"))
+url = "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv"
+download.file(url,destfile="./data/EDSTATS_Country.csv",method="curl")
+dtEd <- data.table(read.csv("./data/EDSTATS_Country.csv"))
+dt <- merge(dtGDP, dtEd, all = TRUE, by = c("CountryCode"))
+sum(!is.na(unique(dt$rankingGDP)))
+dt[order(rankingGDP, decreasing = TRUE), list(CountryCode, Long.Name.x, Long.Name.y, rankingGDP, gdp)][13]
+```
+
+## Question 4
+What is the average GDP ranking for the "High income: OECD" and "High income: nonOECD" group?
+
+```{r}
+dt[, mean(rankingGDP, na.rm = TRUE), by = Income.Group]
+```
+
+## Question 5
+Cut the GDP ranking into 5 separate quantile groups. Make a table versus Income.Group. How many countries are Lower middle income but among the 38 nations with highest GDP?
+```{r}
+breaks <- quantile(dt$rankingGDP, probs = seq(0, 1, 0.2), na.rm = TRUE)
+dt$quantileGDP <- cut(dt$rankingGDP, breaks = breaks)
+dt[Income.Group == "Lower middle income", .N, by = c("Income.Group", "quantileGDP")]
+```
+
+
+
+
+
+
+
 
 
 
