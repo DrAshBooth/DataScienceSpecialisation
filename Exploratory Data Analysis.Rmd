@@ -554,6 +554,392 @@ qplot(votes, rating, data = movies) + geom_smooth()
 
 ## Classes
 
+### Hierarchical Clustering
+
+### Can we find things that are close together?
+
+Clustering organizes things that are close into groups
+
+* How do we define close?
+* How do we group things?
+* How do we visualize the grouping?
+* How do we interpret the grouping?
+
+### Hierarchical clustering
+
+* An agglomerative approach
+
+  + Find closest two things
+  + Put them together
+  + Find next closest
+  
+* Requires
+
+  + A defined distance
+  + A merging approach
+
+* Produces a tree showing how close things are to each other
+
+### How do we define close?
+
+* Most important step
+
+  + Garbage in -> garbage out
+
+* Distance or similarity
+
+  + Continuous - euclidean distance
+  + Continuous - correlation similarity
+  + Binary - manhattan distance
+  
+* Pick a distance/similarity that makes sense for your problem
+
+### Example distances - Euclidean
+![ex](http://datasciencespecialization.github.io/courses/assets/img/distance.png)
+
+![ex2](http://datasciencespecialization.github.io/courses/assets/img/distance2.png)
+
+In general:
+
+$$\sqrt{(A_1-A_2)^2 + (B_1-B_2)^2 + \ldots + (Z_1-Z_2)^2}$$
+
+### Example distances - Manhattan
+
+![ex2](http://datasciencespecialization.github.io/courses/assets/img/manhattan.svg)
+
+In general:
+
+$$|A_1-A_2| + |B_1-B_2| + \ldots + |Z_1-Z_2|$$
+
+### Hierarchical clustering - example
+
+```{r}
+set.seed(1234)
+x <- rnorm(12, mean = rep(1:3, each = 4), sd = 0.2)
+y <- rnorm(12, mean = rep(c(1, 2, 1), each = 4), sd = 0.2)
+plot(x, y, col = "blue", pch = 19, cex = 2)
+text(x + 0.05, y + 0.05, labels = as.character(1:12))
+```
+
+### Hierarchical clustering - dist
+
+Important parameters: ```x,method``` 
+
+```{r}
+dataFrame <- data.frame(x = x, y = y)
+dist(dataFrame)
+```
+
+### Hierarchical clustering - #1
+
+![ex4](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/hierarchicalClustering/figure/unnamed-chunk-2.png)
+
+### Hierarchical clustering - #2
+
+![ex5](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/hierarchicalClustering/figure/unnamed-chunk-3.png)
+
+### Hierarchical clustering - #3
+![ex6](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/hierarchicalClustering/figure/unnamed-chunk-4.png)
+
+### Hierarchical clustering - hclust
+
+```{r}
+distxy <- dist(dataFrame)
+hClustering <- hclust(distxy)
+plot(hClustering)
+```
+
+### Prettier dendrograms
+```{r}
+myplclust <- function(hclust, lab = hclust$labels, lab.col = rep(1, length(hclust$labels)), 
+    hang = 0.1, ...) {
+    ## modifiction of plclust for plotting hclust objects *in colour*!  Copyright
+    ## Eva KF Chan 2009 Arguments: hclust: hclust object lab: a character vector
+    ## of labels of the leaves of the tree lab.col: colour for the labels;
+    ## NA=default device foreground colour hang: as in hclust & plclust Side
+    ## effect: A display of hierarchical cluster with coloured leaf labels.
+    y <- rep(hclust$height, 2)
+    x <- as.numeric(hclust$merge)
+    y <- y[which(x < 0)]
+    x <- x[which(x < 0)]
+    x <- abs(x)
+    y <- y[order(x)]
+    x <- x[order(x)]
+    plot(hclust, labels = FALSE, hang = hang, ...)
+    text(x = x, y = y[hclust$order] - (max(hclust$height) * hang), labels = lab[hclust$order], 
+        col = lab.col[hclust$order], srt = 90, adj = c(1, 0.5), xpd = NA, ...)
+}
+myplclust(hClustering, lab = rep(1:3, each = 4), lab.col = rep(1:3, each = 4))
+```
+
+### Even Prettier dendrograms
+Can be found in the R gallery. There are some really nice ones.
+
+### Merging points - complete
+
+![ex7](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/hierarchicalClustering/figure/unnamed-chunk-7.png)
+
+### Merging points - average
+
+![av](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/hierarchicalClustering/figure/unnamed-chunk-8.png)
+
+### heatmap()
+```{r}
+dataMatrix <- as.matrix(dataFrame)[sample(1:12), ]
+heatmap(dataMatrix)
+```
+
+### Notes and further resources
+
+* Gives an idea of the relationships between variables/observations
+* The picture may be unstable
+
+  + Change a few points
+  + Have different missing values
+  + Pick a different distance
+  + Change the merging strategy
+  + Change the scale of points for one variable
+
+* But it is deterministic
+* Choosing where to cut isn't always obvious
+* Should be primarily used for exploration
+* [Rafa's Distances and Clustering Video](http://www.youtube.com/watch?v=wQhVWUcXM0A)
+* [Elements of statistical learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+
+### K Means Clustering
+
+* A partioning approach
+
+  + Fix a number of clusters
+  + Get "centroids" of each cluster
+  + Assign things to closest centroid
+  + Reclaculate centroids
+
+* Requires
+  
+  + A defined distance metric
+  + A number of clusters
+  + An initial guess as to cluster centroids
+
+* Produces
+
+  + Final estimate of cluster centroids
+  + An assignment of each point to clusters
+
+### K-means clustering - example
+```{r}
+plot(x, y, col = "blue", pch = 19, cex = 2)
+text(x + 0.05, y + 0.05, labels = as.character(1:12))
+```
+
+Starting centroids
+
+![kex](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/kmeansClustering/figure/unnamed-chunk-1.png)
+
+Assign to closest centroid
+
+![kex2](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/kmeansClustering/figure/unnamed-chunk-2.png)
+
+Recalculate centroids
+
+![kex3](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/kmeansClustering/figure/unnamed-chunk-3.png)
+
+Reassign values
+
+![kex4](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/kmeansClustering/figure/unnamed-chunk-4.png)
+
+Update centroids
+
+![kex5](http://datasciencespecialization.github.io/courses/04_ExploratoryAnalysis/kmeansClustering/figure/unnamed-chunk-5.png)
+
+### kmeans()
+Important parameters: ```x, centers, iter.max, nstart```
+```{r}
+kmeansObj <- kmeans(dataFrame, centers = 3)
+names(kmeansObj)
+kmeansObj$cluster
+```
+
+```{r}
+par(mar = rep(1, 4))
+plot(x, y, col = kmeansObj$cluster, pch = 19, cex = 2)
+points(kmeansObj$centers, col = 1:3, pch = 3, cex = 3, lwd = 3)
+```
+
+### Heatmaps
+```{r}
+kmeansObj2 <- kmeans(dataMatrix, centers = 3)
+par(mfrow = c(1, 2), mar = c(2, 4, 1, 1))
+image(t(dataMatrix)[, nrow(dataMatrix):1], yaxt = "n")
+image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n")
+```
+
+### Notes and further resources
+
+* K-means requires a number of clusters
+
+  + Pick by eye/intuition
+  + Pick by cross validation/information theory, etc.
+  + Determining the number of clusters
+
+* K-means is not deterministic
+
+  + Different # of clusters
+  + Different number of iterations
+
+* Rafael Irizarry's Distances and Clustering Video
+* Elements of statistical learning
+
+### Principal Components Analysis and Singular Value Decomposition
+
+### Matrix data
+```{r}
+par(mar = rep(1, 4))
+dataMatrix <- matrix(rnorm(400), nrow = 40)
+image(1:10, 1:40, t(dataMatrix)[, nrow(dataMatrix):1])
+heatmap(dataMatrix)
+```
+
+### What if we add a pattern?
+```{r}
+set.seed(678910)
+for (i in 1:40) {
+    # flip a coin
+    coinFlip <- rbinom(1, size = 1, prob = 0.5)
+    # if coin is heads add a common pattern to that row
+    if (coinFlip) {
+        dataMatrix[i, ] <- dataMatrix[i, ] + rep(c(0, 3), each = 5)
+    }
+}
+heatmap(dataMatrix)
+```
+
+### Patterns in rows and columns
+```{r}
+hh <- hclust(dist(dataMatrix))
+dataMatrixOrdered <- dataMatrix[hh$order, ]
+par(mfrow = c(1, 3))
+image(t(dataMatrixOrdered)[, nrow(dataMatrixOrdered):1])
+plot(rowMeans(dataMatrixOrdered), 40:1, , xlab = "Row Mean", ylab = "Row", pch = 19)
+plot(colMeans(dataMatrixOrdered), xlab = "Column", ylab = "Column Mean", pch = 19)
+```
+
+### Related problems
+You have multivariate variables $X_1,\ldots,X_n$ so $X_1 = (X_{11},\ldots,X_{1m})$
+
+* Find a new set of multivariate variables that are uncorrelated and explain as much variance as possible.
+* If you put all the variables together in one matrix, find the best matrix created with fewer variables (lower rank) that explains the original data.
+
+The first goal is statistical and the second goal is data compression.
+
+### Related solutions - PCA/SVD
+SVD
+
+If X is a matrix with each variable in a column and each observation in a row then the SVD is a "matrix decomposition"
+
+$$X = UDV^T$$
+
+where the columns of U are orthogonal (left singular vectors), the columns of V are orthogonal (right singular vectors) and D is a diagonal matrix (singular values).
+
+PCA
+
+The principal components are equal to the right singular values if you first scale (subtract the mean, divide by the standard deviation) the variables.
+
+### Components of the SVD - u and v
+```{r}
+svd1 <- svd(scale(dataMatrixOrdered))
+par(mfrow = c(1, 3))
+image(t(dataMatrixOrdered)[, nrow(dataMatrixOrdered):1])
+plot(svd1$u[, 1], 40:1, , xlab = "Row", ylab = "First left singular vector", pch = 19)
+plot(svd1$v[, 1], xlab = "Column", ylab = "First right singular vector", pch = 19)
+```
+
+### Components of the SVD - Variance explained
+```{r}
+par(mfrow = c(1, 2))
+plot(svd1$d, xlab = "Column", ylab = "Singular value", pch = 19)
+plot(svd1$d^2/sum(svd1$d^2), xlab = "Column", ylab = "Prop. of variance explained", pch = 19)
+```
+
+### Relationship to principal components
+```{r}
+par(mfrow = c(1, 1))
+svd1 <- svd(scale(dataMatrixOrdered))
+pca1 <- prcomp(dataMatrixOrdered, scale = TRUE)
+plot(pca1$rotation[, 1], svd1$v[, 1], pch = 19, xlab = "Principal Component 1", ylab = "Right Singular Vector 1")
+abline(c(0, 1))
+```
+
+### Components of the SVD - variance explained
+```{r}
+constantMatrix <- dataMatrixOrdered*0
+for(i in 1:dim(dataMatrixOrdered)[1]){constantMatrix[i,] <- rep(c(0,1),each=5)}
+svd1 <- svd(constantMatrix)
+par(mfrow=c(1,3))
+image(t(constantMatrix)[,nrow(constantMatrix):1])
+plot(svd1$d,xlab="Column",ylab="Singular value",pch=19)
+plot(svd1$d^2/sum(svd1$d^2),xlab="Column",ylab="Prop. of variance explained",pch=19)
+```
+
+### What if we add a second pattern?
+```{r}
+set.seed(678910)
+for (i in 1:40) {
+    # flip a coin
+    coinFlip1 <- rbinom(1, size = 1, prob = 0.5)
+    coinFlip2 <- rbinom(1, size = 1, prob = 0.5)
+    # if coin is heads add a common pattern to that row
+    if (coinFlip1) {
+        dataMatrix[i, ] <- dataMatrix[i, ] + rep(c(0, 5), each = 5)
+    }
+    if (coinFlip2) {
+        dataMatrix[i, ] <- dataMatrix[i, ] + rep(c(0, 5), 5)
+    }
+}
+hh <- hclust(dist(dataMatrix))
+dataMatrixOrdered <- dataMatrix[hh$order, ]
+```
+
+### Singular value decomposition - true patterns
+```{r}
+svd2 <- svd(scale(dataMatrixOrdered))
+par(mfrow = c(1, 3))
+image(t(dataMatrixOrdered)[, nrow(dataMatrixOrdered):1])
+plot(rep(c(0, 1), each = 5), pch = 19, xlab = "Column", ylab = "Pattern 1")
+plot(rep(c(0, 1), 5), pch = 19, xlab = "Column", ylab = "Pattern 2")
+```
+
+### v and patterns of variance in rows
+```{r}
+svd2 <- svd(scale(dataMatrixOrdered))
+par(mfrow = c(1, 3))
+image(t(dataMatrixOrdered)[, nrow(dataMatrixOrdered):1])
+plot(svd2$v[, 1], pch = 19, xlab = "Column", ylab = "First right singular vector")
+plot(svd2$v[, 2], pch = 19, xlab = "Column", ylab = "Second right singular vector")
+```
+
+# d and variance explained
+```{r}
+svd1 <- svd(scale(dataMatrixOrdered))
+par(mfrow = c(1, 2))
+plot(svd1$d, xlab = "Column", ylab = "Singular value", pch = 19)
+plot(svd1$d^2/sum(svd1$d^2), xlab = "Column", ylab = "Percent of variance explained", 
+    pch = 19)
+```
+
+### Notes and further resources
+
+* Scale matters
+* PC's/SV's may mix real patterns
+* Can be computationally intensive
+* [Advanced data analysis from an elementary point of view](http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/ADAfaEPoV.pdf)
+* [Elements of statistical learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+* Alternatives
+
+  + [Factor analysis](http://en.wikipedia.org/wiki/Factor_analysis)
+  + [Independent components analysis](http://en.wikipedia.org/wiki/Independent_component_analysis)
+  + [Latent semantic analysis](http://en.wikipedia.org/wiki/Latent_semantic_analysis)
+
 ## Assignment 2 - week 3
 
 ### Introduction
